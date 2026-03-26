@@ -83,13 +83,13 @@ from services.checkin_service import check_in
 # ===============================
 # SAMSUNG WALLET
 # ===============================
-from wallet.samsung_wallet import generate_samsung_cdata
+# from wallet.samsung_wallet import generate_samsung_cdata
 
 # ===============================
 # GOOGLE WALLET
 # ===============================
-from wallet.google_wallet import generate_google_wallet_link
-from wallet.models import WalletPassData
+# from wallet.google_wallet import generate_google_wallet_link
+# from wallet.models import WalletPassData
 
 # ===============================
 # SMTP (Email)
