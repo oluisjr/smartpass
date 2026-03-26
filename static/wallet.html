@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Adicionar ao Google Wallet</title>
+</head>
+<body style="text-align:center; margin-top:50px">
+
+  <button onclick="addToWallet()" style="padding:15px;font-size:18px">
+    ➕ Adicionar ao Google Wallet
+  </button>
+
+  <script>
+    async function addToWallet() {
+      const res = await fetch("http://127.0.0.1:8000/wallet/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          smartpass_id: "abc-123",
+          name: "João Silva",
+          company: "ACME",
+          event: "Evento Corporativo",
+          qr_token: "TOKEN_JWT_AQUI"
+        })
+      });
+
+      const data = await res.json();
+      window.location.href = data.wallet_url;
+    }
+  </script>
+
+</body>
+</html>

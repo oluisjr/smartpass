@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Samsung Wallet Test</title>
+  <script src="https://us-cdn-gpp.mcsvc.samsung.com/lib/wallet-card.js" type="text/javascript"></script>
+  <style>
+    body{font-family:Segoe UI,Arial,sans-serif;background:#0b1220;color:#e5e7eb;margin:0;display:flex;justify-content:center;align-items:center;height:100vh}
+    .card{width:520px;background:#0f1b33;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px}
+    button{width:100%;padding:12px;border:0;border-radius:12px;background:#2563eb;color:#fff;font-weight:600;cursor:pointer}
+    pre{margin-top:14px;background:#0b1220;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;max-height:260px;overflow:auto}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Teste Samsung Wallet</h2>
+    <div id="TARGET_ID"></div>
+    <pre id="log">Clique para gerar cdata e renderizar botão…</pre>
+    <button id="btn">Gerar botão</button>
+  </div>
+
+  <script>
+    // ✅ SEUS VALORES do Partner Wallet
+    const partnerCode = "4138017514550138240";
+    const cardId = "3irbs944vie00";
+
+    // ✅ Use suas URLs de tracking do Partner Wallet (do seu print)
+    const RDClickUrl = "https://us-rd.mcsvc.samsung.com/statistics/click/addtowlt?ep=C50C3754FEB24833B30C10B275BB6AB8;cc=GC;ii=4063269063441135936;co=4138017514550138240;cp=1288017491089625089;si=24;pg=4058691328745130560;pi=Aqz68EBXSx6Mv9jsaZxzaA;tp=4138101311500138240;li=0";
+    const RDImpressionUrl = "https://us-rd.mcsvc.samsung.com/statistics/impression/addtowlt?ep=C50C3754FEB24833B30C10B275BB6AB8;cc=GC;ii=4063269063441135936;co=4138017514550138240;cp=1288017491089625089;si=24;pg=4058691328745130560;pi=Aqz68EBXSx6Mv9jsaZxzaA;tp=4138101311500138240;li=0";
+
+    const log = document.getElementById("log");
+    const btn = document.getElementById("btn");
+
+    btn.onclick = async () => {
+      btn.disabled = true;
+      log.textContent = "Gerando cdata no backend…";
+
+      // ⚠️ Troque esse payload para o que seu smartpass.html usa de verdade
+      const payload = {
+        id: "76b5d873-ee23-412d-bdc2-d037f50a4271",
+        name: "LUIS IGNACIO JUNIOR",
+        company: "CSN",
+        event: "Processo Seletivo | ESTÁGIO",
+        type: "candidate"
+      };
+
+      try {
+        const res = await fetch("/wallet/samsung", {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(JSON.stringify(data));
+
+        const cdata = data.cdata;
+        log.textContent = "cdata recebido. Renderizando botão…";
+
+        samsungWallet.addButton({
+          partnerCode,
+          cardId,
+          cdata,
+          RDClickUrl,
+          RDImpressionUrl,
+          targetId: "TARGET_ID",
+          buttonId: "BTN_SAMSUNG"
+        });
+
+        log.textContent = "Botão renderizado. Clique nele no celular Samsung.";
+      } catch (e) {
+        log.textContent = "Erro: " + e;
+      } finally {
+        btn.disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>

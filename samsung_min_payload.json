@@ -1,0 +1,38 @@
+{
+  "card": {
+    "type": "generic",
+    "subType": "others",
+    "data": [
+      {
+        "createdAt": 1768366107000,
+        "updatedAt": 1768366107000,
+        "language": "pt",
+        "refId": "76b5d873-ee23-412d-bdc2-d037f50a4271",
+        "attributes": {
+          "title": "SmartPass CSN",
+          "subtitle": "Teste",
+          "providerName": "CSN",
+          "text1": "76b5d873-ee23-412d-bdc2-d037f50a4271",
+          "text2": "CSN",
+          "text3": "LUIS",
+          "text4": "Teste",
+          "text5": "candidate",
+          "text6": " ",
+          "serial1.value": "76b5d873-ee23-412d-bdc2-d037f50a4271",
+          "serial1.serialType": "QRCODE",
+          "serial1.ptFormat": "QRCODE",
+          "serial1.ptSubFormat": "QR_CODE",
+          "locations": "[]",
+          "noticeDesc": "{}",
+          "csInfo": "{}"
+        }
+      }
+    ]
+  },
+  "iss": "4138017514550138240",
+  "aud": "1449673255902172160",
+  "iat": 1768366107,
+  "exp": 1768366167,
+  "cardId": "3irbs944vie00",
+  "refId": "76b5d873-ee23-412d-bdc2-d037f50a4271"
+}

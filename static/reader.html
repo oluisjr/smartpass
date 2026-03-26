@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartPass — Painel ao Vivo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #f8f6f2;
+      --surf: rgba(255, 255, 255, .85);
+      --border: rgba(201, 169, 110, .16);
+      --border-h: rgba(201, 169, 110, .4);
+      --sand: #c8b89a;
+      --earth: #7a6a55;
+      --umber: #4e4030;
+      --dark: #1e1a15;
+      --ink: #12100d;
+      --gold: #c9a96e;
+      --gold2: #e0c48a;
+      --shadow: 0 2px 20px rgba(30, 26, 21, .06), 0 1px 4px rgba(30, 26, 21, .04);
+      --shadow-lg: 0 8px 40px rgba(30, 26, 21, .1);
+    }
+
+    html,
+    body {
+      height: 100%;
+      font-family: 'Montserrat', sans-serif;
+      background: var(--bg);
+      color: var(--dark);
+      overflow: hidden;
+      cursor: none;
+    }
+
+    /* ── CURSOR ── */
+    #cur {
+      position: fixed;
+      width: 6px;
+      height: 6px;
+      background: var(--gold);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      transition: width .18s, height .18s;
+      mix-blend-mode: multiply;
+    }
+
+    #cur-ring {
+      position: fixed;
+      width: 28px;
+      height: 28px;
+      border: 1px solid rgba(201, 169, 110, .5);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9998;
+      transform: translate(-50%, -50%);
+      transition: all .14s;
+    }
+
+    .mouse-glow {
+      position: fixed;
+      pointer-events: none;
+      z-index: 0;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(201, 169, 110, .04) 0%, transparent 70%);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    /* NOISE */
+    .noise {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      opacity: .025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* ── GRID BACKGROUND ── */
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-image: linear-gradient(rgba(201, 169, 110, .04) 1px, transparent 1px), linear-gradient(90deg, rgba(201, 169, 110, .04) 1px, transparent 1px);
+      background-size: 50px 50px;
+      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 50%, transparent 100%);
+    }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: rgba(248, 246, 242, .88);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 2rem;
+      gap: 1.2rem;
+      z-index: 100;
+    }
+
+    .logo-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-ring {
+      position: relative;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .lr-o {
+      position: absolute;
+      inset: 0;
+      border: 1.5px solid var(--gold);
+      border-radius: 50%;
+      animation: spin 10s linear infinite;
+    }
+
+    .lr-o::before {
+      content: '';
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: var(--gold);
+      border-radius: 50%;
+      top: -2px;
+      left: 50%;
+      transform: translateX(-50%);
+      box-shadow: 0 0 6px var(--gold);
+    }
+
+    .lr-i {
+      position: absolute;
+      inset: 6px;
+      border: 1px dashed rgba(201, 169, 110, .3);
+      border-radius: 50%;
+      animation: spin 6s linear infinite reverse;
+    }
+
+    .lr-d {
+      width: 6px;
+      height: 6px;
+      background: var(--gold);
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(201, 169, 110, .6);
+      animation: pulse-d 2.5s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes pulse-d {
+
+      0%,
+      100% {
+        box-shadow: 0 0 6px rgba(201, 169, 110, .4);
+      }
+
+      50% {
+        box-shadow: 0 0 18px rgba(201, 169, 110, .9);
+      }
+    }
+
+    .logo-text {
+      font-size: .9rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+      color: var(--dark);
+    }
+
+    .logo-text span {
+      color: var(--gold);
+    }
+
+    .top-meeting-name {
+      flex: 1;
+      font-size: .85rem;
+      font-weight: 300;
+      color: var(--earth);
+      letter-spacing: .02em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .top-meeting-name strong {
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .top-badge {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: .35rem .85rem;
+      border-radius: 100px;
+      font-size: .65rem;
+      font-weight: 500;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      border: 1px solid rgba(201, 169, 110, .25);
+      background: rgba(201, 169, 110, .07);
+      color: var(--earth);
+    }
+
+    .live-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--gold);
+      animation: pulse-d 1.5s infinite;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: .5rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: .45rem .9rem;
+      border-radius: 8px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: .65rem;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      border: none;
+      cursor: none;
+      transition: all .25s;
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--earth);
+      border: 1px solid var(--border);
+    }
+
+    .btn-outline:hover {
+      border-color: var(--border-h);
+      color: var(--dark);
+      background: rgba(201, 169, 110, .06);
+    }
+
+    .btn-sm {
+      padding: .35rem .7rem;
+      font-size: .6rem;
+    }
+
+    .nav-glow-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      overflow: hidden;
+    }
+
+    .nav-glow-beam {
+      position: absolute;
+      top: 0;
+      width: 160px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(201, 169, 110, .7), transparent);
+      filter: blur(.5px);
+      animation: beam-sweep 7s ease-in-out infinite;
+    }
+
+    @keyframes beam-sweep {
+      0% {
+        left: -200px;
+        opacity: 0;
+      }
+
+      8% {
+        opacity: 1;
+      }
+
+      92% {
+        opacity: 1;
+      }
+
+      100% {
+        left: calc(100% + 200px);
+        opacity: 0;
+      }
+    }
+
+    /* ── MAIN LAYOUT ── */
+    .main {
+      position: fixed;
+      inset: 0;
+      top: 60px;
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 0;
+      overflow: hidden;
+    }
+
+    /* ── LEFT: CODE PANEL ── */
+    .code-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* CODE RING SYSTEM */
+    .code-stage {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 380px;
+      height: 380px;
+    }
+
+    .ring {
+      position: absolute;
+      border-radius: 50%;
+    }
+
+    .ring-1 {
+      width: 380px;
+      height: 380px;
+      border: 1px solid rgba(201, 169, 110, .07);
+      animation: ring-pulse 5s ease-in-out infinite;
+    }
+
+    .ring-2 {
+      width: 320px;
+      height: 320px;
+      border: 1px dashed rgba(201, 169, 110, .1);
+      animation: ring-pulse 5s ease-in-out infinite .7s;
+    }
+
+    .ring-3 {
+      width: 260px;
+      height: 260px;
+      border: 1px solid rgba(201, 169, 110, .12);
+      animation: ring-pulse 5s ease-in-out infinite 1.4s;
+    }
+
+    @keyframes ring-pulse {
+
+      0%,
+      100% {
+        opacity: .5;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 1;
+        transform: scale(1.015);
+      }
+    }
+
+    /* SVG ANIMATED ARC */
+    .arc-svg {
+      position: absolute;
+      width: 340px;
+      height: 340px;
+      animation: spin 20s linear infinite;
+    }
+
+    .arc-svg-inner {
+      position: absolute;
+      width: 250px;
+      height: 250px;
+      animation: spin 12s linear infinite reverse;
+    }
+
+    /* ORBIT DOTS */
+    .orbit-dot {
+      position: absolute;
+      width: 7px;
+      height: 7px;
+      background: var(--gold);
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(201, 169, 110, .6);
+    }
+
+    /* CENTER CODE */
+    .code-center {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: .5rem;
+      white-space: nowrap;
+    }
+
+    .code-eyebrow {
+      font-size: .58rem;
+      font-weight: 600;
+      letter-spacing: .25em;
+      text-transform: uppercase;
+      color: var(--earth);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .code-eyebrow::before,
+    .code-eyebrow::after {
+      content: '';
+      width: 18px;
+      height: 1px;
+      background: rgba(201, 169, 110, .3);
+    }
+
+    .code-digits {
+      font-size: clamp(3.8rem, 6vw, 5.5rem);
+      font-weight: 700;
+      letter-spacing: .22em;
+      color: var(--dark);
+      line-height: 1;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+      transition: all .4s cubic-bezier(.2, .8, .2, 1);
+      position: relative;
+    }
+
+    .code-digits.refreshing {
+      transform: scale(.94);
+      opacity: 0;
+    }
+
+    .code-digits::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80%;
+      height: 1.5px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      opacity: .5;
+    }
+
+    /* COUNTDOWN ARC */
+    .countdown-svg {
+      position: absolute;
+      width: 210px;
+      height: 210px;
+      transform: rotate(-90deg);
+      z-index: 5;
+    }
+
+    #countdown-arc {
+      stroke-dasharray: 604;
+      stroke-dashoffset: 0;
+      transition: stroke-dashoffset 1s linear;
+    }
+
+    .code-timer {
+      font-size: .72rem;
+      font-weight: 300;
+      letter-spacing: .08em;
+      color: var(--earth);
+      margin-top: .2rem;
+    }
+
+    .code-timer strong {
+      color: var(--dark);
+      font-weight: 600;
+    }
+
+    /* STATS ROW */
+    .stats-row {
+      display: flex;
+      gap: 2rem;
+      margin-top: 2.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-num {
+      font-size: 2rem;
+      font-weight: 600;
+      color: var(--dark);
+      line-height: 1;
+      display: block;
+    }
+
+    .stat-label {
+      font-size: .62rem;
+      font-weight: 500;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--earth);
+      margin-top: .2rem;
+    }
+
+    .stat-bar {
+      width: 80px;
+      height: 3px;
+      background: var(--border);
+      border-radius: 3px;
+      margin: .4rem auto 0;
+      overflow: hidden;
+    }
+
+    .stat-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--gold), var(--gold2));
+      border-radius: 3px;
+      transition: width .6s ease;
+    }
+
+    /* ── RIGHT: FEED ── */
+    .feed-panel {
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: rgba(250, 248, 244, .5);
+    }
+
+    .feed-header {
+      padding: 1.2rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .feed-title {
+      font-size: .7rem;
+      font-weight: 600;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      color: var(--earth);
+    }
+
+    .feed-count {
+      font-size: .65rem;
+      font-weight: 400;
+      color: var(--earth);
+      padding: .2rem .6rem;
+      border-radius: 100px;
+      background: rgba(201, 169, 110, .08);
+      border: 1px solid var(--border);
+    }
+
+    .feed-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: .8rem;
+      scrollbar-width: thin;
+      scrollbar-color: var(--sand) transparent;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+    }
+
+    /* FEED ITEM */
+    .feed-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: .9rem 1rem;
+      border-radius: 10px;
+      background: var(--surf);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      transition: all .3s;
+      animation: slide-in .4s cubic-bezier(.2, .8, .2, 1) both;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feed-item::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--gold), rgba(201, 169, 110, .2));
+      transform: scaleY(0);
+      transition: transform .3s;
+      transform-origin: top;
+    }
+
+    .feed-item:hover {
+      border-color: var(--border-h);
+      transform: translateX(2px);
+    }
+
+    .feed-item:hover::before {
+      transform: scaleY(1);
+    }
+
+    .feed-item.new-item {
+      border-color: rgba(201, 169, 110, .35);
+      background: rgba(201, 169, 110, .04);
+      box-shadow: 0 0 20px rgba(201, 169, 110, .08), var(--shadow);
+    }
+
+    @keyframes slide-in {
+      from {
+        opacity: 0;
+        transform: translateX(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, var(--gold), var(--earth));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .7rem;
+      font-weight: 700;
+      color: white;
+      letter-spacing: .02em;
+    }
+
+    .feed-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .feed-name {
+      font-size: .8rem;
+      font-weight: 500;
+      color: var(--dark);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .feed-area {
+      font-size: .65rem;
+      font-weight: 300;
+      color: var(--earth);
+      margin-top: 1px;
+    }
+
+    .feed-time {
+      font-size: .62rem;
+      font-weight: 300;
+      color: var(--sand);
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .feed-status {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .65rem;
+      background: rgba(34, 197, 94, .1);
+      border: 1px solid rgba(34, 197, 94, .2);
+      color: #22c55e;
+    }
+
+    /* EMPTY FEED */
+    .feed-empty {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: .8rem;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    .feed-empty-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: rgba(201, 169, 110, .06);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+    }
+
+    .feed-empty-text {
+      font-size: .78rem;
+      font-weight: 300;
+      color: var(--earth);
+      line-height: 1.6;
+    }
+
+    /* EXPORT BAR */
+    .export-bar {
+      padding: .8rem 1rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: .4rem;
+      flex-wrap: wrap;
+      background: rgba(250, 248, 244, .8);
+      flex-shrink: 0;
+    }
+
+    /* ── TOAST ── */
+    .toast-wrap {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 999;
+      pointer-events: none;
+    }
+
+    .toast {
+      padding: .8rem 1.5rem;
+      border-radius: 100px;
+      background: var(--dark);
+      color: var(--gold2);
+      font-size: .75rem;
+      font-weight: 500;
+      letter-spacing: .06em;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, .2), 0 0 40px rgba(201, 169, 110, .1);
+      transform: translateY(20px);
+      opacity: 0;
+      transition: all .35s cubic-bezier(.2, .8, .2, 1);
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* ── FULLSCREEN CODE MODE ── */
+    .fullscreen-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 400;
+      background: rgba(18, 16, 13, .97);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .4s;
+    }
+
+    .fullscreen-overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .fs-label {
+      font-size: .7rem;
+      font-weight: 600;
+      letter-spacing: .3em;
+      text-transform: uppercase;
+      color: rgba(201, 169, 110, .5);
+      margin-bottom: 2rem;
+    }
+
+    .fs-code {
+      font-size: clamp(6rem, 18vw, 14rem);
+      font-weight: 800;
+      letter-spacing: .2em;
+      color: var(--gold2);
+      line-height: 1;
+      text-shadow: 0 0 60px rgba(201, 169, 110, .3);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .fs-meeting {
+      font-size: 1rem;
+      font-weight: 300;
+      color: rgba(255, 255, 255, .4);
+      margin-top: 1.5rem;
+      letter-spacing: .06em;
+    }
+
+    .fs-close {
+      position: absolute;
+      top: 2rem;
+      right: 2rem;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .06);
+      border: 1px solid rgba(255, 255, 255, .1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: none;
+      color: rgba(255, 255, 255, .4);
+      font-size: .9rem;
+      transition: all .2s;
+    }
+
+    .fs-close:hover {
+      background: rgba(255, 255, 255, .1);
+      color: white;
+    }
+
+    .fs-progress {
+      width: min(400px, 80vw);
+      height: 2px;
+      background: rgba(255, 255, 255, .06);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 2rem;
+    }
+
+    .fs-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--gold), var(--gold2));
+      box-shadow: 0 0 8px rgba(201, 169, 110, .6);
+      animation: progress-anim 60s linear infinite;
+    }
+
+    @keyframes progress-anim {
+      from {
+        width: 100%;
+      }
+
+      to {
+        width: 0;
+      }
+    }
+
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(201, 169, 110, .2);
+      border-radius: 2px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="cur"></div>
+  <div id="cur-ring"></div>
+  <div class="mouse-glow" id="mg"></div>
+  <div class="noise"></div>
+  <div class="bg-grid"></div>
+
+  <!-- TOPBAR -->
+  <nav class="topbar">
+    <div class="logo-wrap">
+      <div class="logo-ring">
+        <div class="lr-o"></div>
+        <div class="lr-i"></div>
+        <div class="lr-d"></div>
+      </div>
+      <div class="logo-text">Smart<span>Pass</span></div>
+    </div>
+
+    <div class="top-meeting-name" id="top-meeting-name">
+      <strong>Carregando...</strong>
+    </div>
+
+    <div class="top-badge">
+      <div class="live-dot"></div>
+      Ao Vivo
+    </div>
+
+    <div class="top-actions">
+      <button class="btn btn-outline btn-sm" onclick="toggleFullscreen()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+        </svg>
+        Tela Cheia
+      </button>
+      <button class="btn btn-outline btn-sm" onclick="window.location.href='/portal'">
+        ← Portal
+      </button>
+    </div>
+
+    <div class="nav-glow-bar">
+      <div class="nav-glow-beam"></div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- CODE PANEL -->
+    <div class="code-panel" id="code-panel">
+
+      <div class="code-stage" id="code-stage">
+        <!-- Static rings -->
+        <div class="ring ring-1"></div>
+        <div class="ring ring-2"></div>
+        <div class="ring ring-3"></div>
+
+        <!-- SVG arcs -->
+        <svg class="arc-svg" viewBox="0 0 340 340" fill="none">
+          <circle cx="170" cy="170" r="165" stroke="rgba(201,169,110,.06)" stroke-width="1" stroke-dasharray="5 7" />
+          <circle cx="170" cy="170" r="165" stroke="url(#arcGrad1)" stroke-width="2" stroke-dasharray="100 940"
+            stroke-linecap="round" />
+          <defs>
+            <linearGradient id="arcGrad1" x1="0" y1="0" x2="340" y2="340" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#c9a96e" stop-opacity="0" />
+              <stop offset="50%" stop-color="#c9a96e" stop-opacity="1" />
+              <stop offset="100%" stop-color="#c9a96e" stop-opacity="0" />
+            </linearGradient>
+          </defs>
+        </svg>
+
+        <svg class="arc-svg-inner" viewBox="0 0 250 250" fill="none">
+          <circle cx="125" cy="125" r="120" stroke="rgba(201,169,110,.06)" stroke-width="1" />
+          <circle cx="125" cy="125" r="120" stroke="url(#arcGrad2)" stroke-width="1.5" stroke-dasharray="60 694"
+            stroke-linecap="round" />
+          <defs>
+            <linearGradient id="arcGrad2" x1="250" y1="0" x2="0" y2="250" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#e0c48a" stop-opacity="0" />
+              <stop offset="50%" stop-color="#e0c48a" stop-opacity=".8" />
+              <stop offset="100%" stop-color="#e0c48a" stop-opacity="0" />
+            </linearGradient>
+          </defs>
+        </svg>
+
+        <!-- Countdown SVG ring -->
+        <svg class="countdown-svg" viewBox="0 0 210 210" fill="none">
+          <circle cx="105" cy="105" r="96" stroke="rgba(201,169,110,.08)" stroke-width="2" />
+          <circle id="countdown-arc" cx="105" cy="105" r="96" stroke="url(#cdGrad)" stroke-width="2.5"
+            stroke-linecap="round" />
+          <defs>
+            <linearGradient id="cdGrad" x1="0" y1="0" x2="210" y2="210" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#c9a96e" stop-opacity=".3" />
+              <stop offset="100%" stop-color="#e0c48a" stop-opacity="1" />
+            </linearGradient>
+          </defs>
+        </svg>
+
+        <!-- Orbit dots (will be animated by JS) -->
+        <div class="orbit-dot" id="od1" style="top:0;left:50%;transform:translate(-50%,-50%);"></div>
+        <div class="orbit-dot" id="od2" style="width:5px;height:5px;opacity:.5;"></div>
+        <div class="orbit-dot" id="od3" style="width:4px;height:4px;opacity:.3;background:var(--sand);box-shadow:none;">
+        </div>
+
+        <!-- CENTER -->
+        <div class="code-center">
+          <div class="code-eyebrow">código da reunião</div>
+          <div class="code-digits" id="code-display">— — — —</div>
+          <div class="code-timer">Expira em <strong id="timer-sec">60</strong>s</div>
+        </div>
+      </div>
+
+      <!-- STATS -->
+      <div class="stats-row">
+        <div class="stat-item">
+          <span class="stat-num" id="s-total">0</span>
+          <div class="stat-label">Total</div>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num" id="s-present">0</span>
+          <div class="stat-label">Presentes</div>
+          <div class="stat-bar">
+            <div class="stat-bar-fill" id="s-bar" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num" id="s-pending">0</span>
+          <div class="stat-label">Pendentes</div>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num" id="s-rate">0%</span>
+          <div class="stat-label">Taxa</div>
+        </div>
+      </div>
+
+    </div><!-- /code-panel -->
+
+    <!-- FEED PANEL -->
+    <div class="feed-panel">
+      <div class="feed-header">
+        <div class="feed-title">Confirmações</div>
+        <div class="feed-count" id="feed-count">0</div>
+      </div>
+
+      <div class="feed-list" id="feed-list">
+        <div class="feed-empty" id="feed-empty">
+          <div class="feed-empty-icon">◉</div>
+          <div class="feed-empty-text">Aguardando confirmações.<br>Os check-ins aparecerão aqui em tempo real.</div>
+        </div>
+      </div>
+
+      <div class="export-bar">
+        <button class="btn btn-outline btn-sm" onclick="exportFile('csv')">↓ CSV</button>
+        <button class="btn btn-outline btn-sm" onclick="exportFile('xlsx')">↓ Excel</button>
+        <button class="btn btn-outline btn-sm" onclick="exportFile('pdf')">↓ PDF</button>
+        <button class="btn btn-outline btn-sm" onclick="exportFile('ics')">↓ .ics</button>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+
+  <!-- FULLSCREEN CODE -->
+  <div class="fullscreen-overlay" id="fs-overlay">
+    <button class="fs-close" onclick="toggleFullscreen()">✕</button>
+    <div class="fs-label">Código da Reunião</div>
+    <div class="fs-code" id="fs-code">— — — —</div>
+    <div class="fs-meeting" id="fs-meeting">—</div>
+    <div class="fs-progress">
+      <div class="fs-progress-fill" id="fs-progress-fill"></div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast-wrap">
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <script>
+    // ── CURSOR ──
+    const cur = document.getElementById('cur'), ring = document.getElementById('cur-ring'), mg = document.getElementById('mg');
+    let mx = 0, my = 0, rx = 0, ry = 0;
+    document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; cur.style.left = mx + 'px'; cur.style.top = my + 'px'; mg.style.left = mx + 'px'; mg.style.top = my + 'px'; });
+    (function aR() { rx += (mx - rx) * .1; ry += (my - ry) * .1; ring.style.left = rx + 'px'; ring.style.top = ry + 'px'; requestAnimationFrame(aR); })();
+    document.querySelectorAll('button,a').forEach(el => {
+      el.addEventListener('mouseenter', () => { cur.style.width = '10px'; cur.style.height = '10px'; ring.style.width = '40px'; ring.style.height = '40px'; ring.style.borderColor = 'rgba(201,169,110,.8)'; });
+      el.addEventListener('mouseleave', () => { cur.style.width = '6px'; cur.style.height = '6px'; ring.style.width = '28px'; ring.style.height = '28px'; ring.style.borderColor = 'rgba(201,169,110,.5)'; });
+    });
+
+    // ── MOUSE PARALLAX ON CODE PANEL ──
+    const codePanel = document.getElementById('code-panel');
+    const codeStage = document.getElementById('code-stage');
+    codePanel.addEventListener('mousemove', e => {
+      const r = codePanel.getBoundingClientRect();
+      const x = (e.clientX - r.left - r.width / 2) / r.width;
+      const y = (e.clientY - r.top - r.height / 2) / r.height;
+      codeStage.style.transform = `rotateX(${-y * 6}deg) rotateY(${x * 6}deg)`;
+      codeStage.style.transition = 'transform .1s ease';
+    });
+    codePanel.addEventListener('mouseleave', () => {
+      codeStage.style.transform = 'rotateX(0) rotateY(0)';
+      codeStage.style.transition = 'transform .6s ease';
+    });
+
+    // ── ORBIT DOTS ANIMATION ──
+    const od1 = document.getElementById('od1');
+    const od2 = document.getElementById('od2');
+    const od3 = document.getElementById('od3');
+    let orbitAngle = 0;
+    (function animOrbit() {
+      orbitAngle += .008;
+      const cx = 190, cy = 190;
+      const r1 = 170, r2 = 155, r3 = 130;
+      od1.style.left = (cx + Math.cos(orbitAngle) * r1 - 3.5) + 'px';
+      od1.style.top = (cy + Math.sin(orbitAngle) * r1 - 3.5) + 'px';
+      od2.style.left = (cx + Math.cos(orbitAngle + Math.PI) * r2 - 2.5) + 'px';
+      od2.style.top = (cy + Math.sin(orbitAngle + Math.PI) * r2 - 2.5) + 'px';
+      od3.style.left = (cx + Math.cos(orbitAngle * 1.5 + 1) * r3 - 2) + 'px';
+      od3.style.top = (cy + Math.sin(orbitAngle * 1.5 + 1) * r3 - 2) + 'px';
+      requestAnimationFrame(animOrbit);
+    })();
+
+    // ── MEETING ID ──
+    const params = new URLSearchParams(location.search);
+    const meetingId = params.get('meeting_id');
+    if (!meetingId) { document.getElementById('top-meeting-name').innerHTML = '<span style="color:#e05555;">Nenhuma reunião selecionada. Use ?meeting_id=...</span>'; }
+
+    let meetingData = null;
+    let knownCheckins = new Set();
+    let currentCode = '';
+
+    // ── TOAST ──
+    let toastTimer;
+    function toast(msg) {
+      const t = document.getElementById('toast');
+      clearTimeout(toastTimer);
+      t.textContent = msg; t.classList.add('show');
+      toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    // ── COUNTDOWN ARC ──
+    const arcCircumference = 2 * Math.PI * 96;
+    document.getElementById('countdown-arc').style.strokeDasharray = arcCircumference;
+    document.getElementById('countdown-arc').style.strokeDashoffset = 0;
+    function setCountdown(remaining) {
+      const pct = remaining / 60;
+      document.getElementById('countdown-arc').style.strokeDashoffset = arcCircumference * (1 - pct);
+      document.getElementById('timer-sec').textContent = remaining;
+      // Also set fullscreen progress
+      const fsBar = document.getElementById('fs-progress-fill');
+      if (fsBar) {
+        fsBar.style.animation = 'none';
+        fsBar.style.width = (pct * 100) + '%';
+        fsBar.offsetHeight; // reflow
+      }
+    }
+
+    // ── LOAD MEETING INFO ──
+    async function loadMeeting() {
+      if (!meetingId) return;
+      try {
+        const r = await fetch(`/api/meetings/${meetingId}`);
+        if (!r.ok) return;
+        meetingData = await r.json();
+        document.getElementById('top-meeting-name').innerHTML = `<strong>${meetingData.title}</strong> · ${meetingData.location_name || ''}`;
+        document.getElementById('fs-meeting').textContent = meetingData.title || '';
+      } catch { }
+    }
+
+    // ── FETCH CODE ──
+    async function fetchCode() {
+      if (!meetingId) return;
+      try {
+        const r = await fetch(`/api/meetings/${meetingId}/code`);
+        const d = await r.json();
+        if (d.code) {
+          const newCode = d.code.replace(/(\d{3})(\d{3})/, '$1  $2');
+          if (newCode !== currentCode) {
+            const el = document.getElementById('code-display');
+            el.classList.add('refreshing');
+            setTimeout(() => {
+              el.textContent = newCode;
+              document.getElementById('fs-code').textContent = newCode;
+              currentCode = newCode;
+              el.classList.remove('refreshing');
+            }, 300);
+          }
+          setCountdown(d.remaining_s || 60);
+        }
+      } catch { }
+    }
+
+    // ── FETCH ATTENDANCE ──
+    async function fetchAttendance() {
+      if (!meetingId) return;
+      try {
+        const [att, stats] = await Promise.all([
+          fetch(`/api/meetings/${meetingId}/attendance`).then(r => r.json()),
+          fetch(`/api/meetings/${meetingId}/stats`).then(r => r.json()),
+        ]);
+        // Update stats
+        document.getElementById('s-total').textContent = stats.total || 0;
+        document.getElementById('s-present').textContent = stats.checked_in || 0;
+        document.getElementById('s-pending').textContent = stats.pending || 0;
+        document.getElementById('s-rate').textContent = Math.round((stats.rate || 0) * 100) + '%';
+        document.getElementById('s-bar').style.width = ((stats.rate || 0) * 100) + '%';
+        document.getElementById('feed-count').textContent = stats.checked_in || 0;
+
+        // Update feed
+        const checked = (att.invitees || []).filter(i => i.checked_in).sort((a, b) => new Date(b.checked_in_at) - new Date(a.checked_in_at));
+        const isFirst = knownCheckins.size === 0;
+        checked.forEach(i => {
+          if (!knownCheckins.has(i.id)) {
+            knownCheckins.add(i.id);
+            if (!isFirst) toast(`✓ ${i.name} confirmou presença`);
+            prependFeedItem(i, !isFirst);
+          }
+        });
+        if (checked.length > 0 && isFirst) {
+          renderAllFeed(checked);
+        }
+        if (checked.length === 0) {
+          document.getElementById('feed-empty').style.display = 'flex';
+        } else {
+          const e = document.getElementById('feed-empty');
+          if (e) e.style.display = 'none';
+        }
+      } catch { }
+    }
+
+    function fmtTime(iso) {
+      return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function buildFeedItem(inv, isNew = false) {
+      const initials = (inv.name || '??').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+      const hue = ((inv.name || '').charCodeAt(0) * 7) % 360;
+      const item = document.createElement('div');
+      item.className = 'feed-item' + (isNew ? ' new-item' : '');
+      item.id = 'fi-' + inv.id;
+      item.innerHTML = `
+    <div class="avatar" style="background:linear-gradient(135deg,hsl(${hue},40%,55%),hsl(${hue},30%,40%))">${initials}</div>
+    <div class="feed-info">
+      <div class="feed-name">${inv.name || '—'}</div>
+      <div class="feed-area">${inv.area || inv.company || '—'}</div>
+    </div>
+    <div class="feed-time">${inv.checked_in_at ? fmtTime(inv.checked_in_at) : '—'}</div>
+    <div class="feed-status">✓</div>
+  `;
+      if (isNew) {
+        setTimeout(() => item.classList.remove('new-item'), 3000);
+      }
+      return item;
+    }
+
+    function prependFeedItem(inv, isNew = false) {
+      const list = document.getElementById('feed-list');
+      const emptyEl = document.getElementById('feed-empty');
+      if (emptyEl) emptyEl.style.display = 'none';
+      const item = buildFeedItem(inv, isNew);
+      list.insertBefore(item, list.firstChild);
+    }
+
+    function renderAllFeed(invitees) {
+      const list = document.getElementById('feed-list');
+      list.innerHTML = '';
+      if (!invitees.length) {
+        list.innerHTML = `<div class="feed-empty" id="feed-empty">
+      <div class="feed-empty-icon">◉</div>
+      <div class="feed-empty-text">Aguardando confirmações.<br>Os check-ins aparecerão aqui em tempo real.</div>
+    </div>`;
+        return;
+      }
+      invitees.forEach(inv => {
+        knownCheckins.add(inv.id);
+        list.appendChild(buildFeedItem(inv, false));
+      });
+    }
+
+    // ── EXPORT ──
+    function exportFile(type) {
+      if (!meetingId) { toast('Nenhuma reunião selecionada.'); return; }
+      const urls = { csv: `/api/meetings/${meetingId}/export/csv`, xlsx: `/api/meetings/${meetingId}/export/xlsx`, pdf: `/api/meetings/${meetingId}/export/pdf`, ics: `/api/meetings/${meetingId}/export/ics` };
+      window.open(urls[type]);
+    }
+
+    // ── FULLSCREEN ──
+    let fsOpen = false;
+    function toggleFullscreen() {
+      fsOpen = !fsOpen;
+      document.getElementById('fs-overlay').classList.toggle('open', fsOpen);
+      if (fsOpen && currentCode) {
+        document.getElementById('fs-code').textContent = currentCode;
+      }
+    }
+
+    // ── COUNTDOWN TIMER ──
+    let countdown = 60;
+    let codeInterval;
+    function startCountdown(initial = 60) {
+      countdown = initial;
+      clearInterval(codeInterval);
+      codeInterval = setInterval(() => {
+        countdown = Math.max(0, countdown - 1);
+        setCountdown(countdown);
+        if (countdown <= 0) { fetchCode(); }
+      }, 1000);
+    }
+
+    // ── POLLING ──
+    async function pollAll() {
+      await fetchCode();
+      await fetchAttendance();
+    }
+
+    // ── INIT ──
+    loadMeeting();
+    pollAll().then(() => startCountdown(60));
+    setInterval(fetchAttendance, 5000);
+    setInterval(fetchCode, 10000);
+
+    // ESC closes fullscreen
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && fsOpen) toggleFullscreen();
+      if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+    });
+  </script>
+</body>
+
+</html>

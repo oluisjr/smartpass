@@ -1,0 +1,2179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartPass — Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300;400;500;600;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      /* ── Palette ── */
+      --bg: #f5f3ef;
+      --surface: #ffffff;
+      --surface2: #faf8f5;
+      --surface3: #f2efe9;
+      --border: rgba(180, 155, 110, .18);
+      --border-md: rgba(180, 155, 110, .32);
+      --gold: #c9a96e;
+      --gold2: #e0c48a;
+      --sand: #b8a484;
+      --earth: #7a6a55;
+      --umber: #4e4030;
+      --dark: #1e1a14;
+      --ink: #12100d;
+      --danger: #e05555;
+      /* ── Sizing ── */
+      --nav-h: 58px;
+      --r: 12px;
+      --r-lg: 18px;
+      /* ── Shadows ── */
+      --sh-xs: 0 1px 3px rgba(20, 16, 10, .06);
+      --sh-sm: 0 2px 12px rgba(20, 16, 10, .07), 0 1px 3px rgba(20, 16, 10, .04);
+      --sh-md: 0 6px 28px rgba(20, 16, 10, .09), 0 2px 6px rgba(20, 16, 10, .05);
+      --sh-lg: 0 16px 48px rgba(20, 16, 10, .12), 0 4px 12px rgba(20, 16, 10, .06);
+    }
+
+    html,
+    body {
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Montserrat', sans-serif;
+      background: var(--bg);
+      color: var(--dark);
+      cursor: none;
+    }
+
+    /* ── CURSOR ── */
+    #cur {
+      position: fixed;
+      width: 6px;
+      height: 6px;
+      background: var(--gold);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      transition: width .18s, height .18s;
+      mix-blend-mode: multiply;
+    }
+
+    #cur-ring {
+      position: fixed;
+      width: 28px;
+      height: 28px;
+      border: 1px solid rgba(201, 169, 110, .45);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9998;
+      transform: translate(-50%, -50%);
+      transition: width .15s, height .15s, border-color .2s;
+    }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--nav-h);
+      background: rgba(245, 243, 239, .92);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 1.8rem;
+      gap: 1.8rem;
+      z-index: 400;
+      transition: box-shadow .3s;
+    }
+
+    .topbar.elevated {
+      box-shadow: var(--sh-sm);
+    }
+
+    /* Logo */
+    .logo-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      margin-right: .5rem;
+    }
+
+    .logo-ring {
+      position: relative;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .lr-o {
+      position: absolute;
+      inset: 0;
+      border: 1.5px solid var(--gold);
+      border-radius: 50%;
+      animation: spin 10s linear infinite;
+    }
+
+    .lr-o::before {
+      content: '';
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: var(--gold);
+      border-radius: 50%;
+      top: -2px;
+      left: 50%;
+      transform: translateX(-50%);
+      box-shadow: 0 0 6px var(--gold);
+    }
+
+    .lr-i {
+      position: absolute;
+      inset: 7px;
+      border: 1px dashed rgba(201, 169, 110, .3);
+      border-radius: 50%;
+      animation: spin 6s linear infinite reverse;
+    }
+
+    .lr-d {
+      width: 6px;
+      height: 6px;
+      background: var(--gold);
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(201, 169, 110, .5);
+      animation: pulse 2.5s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 5px rgba(201, 169, 110, .4);
+      }
+
+      50% {
+        box-shadow: 0 0 16px rgba(201, 169, 110, .8);
+      }
+    }
+
+    .logo-text {
+      font-size: .92rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+      color: var(--dark);
+    }
+
+    .logo-text span {
+      color: var(--gold);
+    }
+
+    /* Nav tabs */
+    .nav-tabs {
+      display: flex;
+      gap: .15rem;
+      flex: 1;
+    }
+
+    .nav-tab {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: .42rem 1rem;
+      border-radius: 8px;
+      font-size: .68rem;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--earth);
+      background: transparent;
+      border: none;
+      cursor: none;
+      position: relative;
+      transition: color .2s, background .2s;
+    }
+
+    .nav-tab:hover {
+      color: var(--dark);
+      background: rgba(201, 169, 110, .07);
+    }
+
+    .nav-tab.active {
+      color: var(--umber);
+    }
+
+    /* Active underline dot */
+    .nav-tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 16px;
+      height: 2px;
+      background: var(--gold);
+      border-radius: 2px;
+      box-shadow: 0 1px 6px rgba(201, 169, 110, .4);
+    }
+
+    .tab-icon {
+      font-size: .72rem;
+    }
+
+    /* Nav beam */
+    .nav-glow {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      overflow: hidden;
+    }
+
+    .nav-glow-beam {
+      position: absolute;
+      top: 0;
+      width: 160px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(201, 169, 110, .6), transparent);
+      animation: beam-sweep 7s ease-in-out infinite;
+    }
+
+    @keyframes beam-sweep {
+      0% {
+        left: -200px;
+        opacity: 0;
+      }
+
+      8% {
+        opacity: 1;
+      }
+
+      92% {
+        opacity: 1;
+      }
+
+      100% {
+        left: calc(100% + 200px);
+        opacity: 0;
+      }
+    }
+
+    /* User area */
+    .user-area {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    .user-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: .35rem .8rem;
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      background: rgba(201, 169, 110, .04);
+      transition: all .2s;
+    }
+
+    .user-badge:hover {
+      border-color: var(--border-md);
+      background: rgba(201, 169, 110, .08);
+    }
+
+    .user-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--gold), var(--earth));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .55rem;
+      font-weight: 700;
+      color: white;
+    }
+
+    .user-email {
+      font-size: .66rem;
+      font-weight: 400;
+      color: var(--earth);
+    }
+
+    .user-role {
+      font-size: .52rem;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--gold);
+      padding: .18rem .45rem;
+      background: rgba(201, 169, 110, .1);
+      border-radius: 100px;
+    }
+
+    .logout-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: transparent;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: none;
+      transition: all .2s;
+      color: var(--earth);
+    }
+
+    .logout-btn:hover {
+      border-color: rgba(220, 80, 80, .3);
+      color: var(--danger);
+      background: rgba(220, 80, 80, .05);
+    }
+
+    /* ── MAIN CONTENT ── */
+    .main {
+      position: fixed;
+      inset: 0;
+      top: var(--nav-h);
+      overflow: hidden;
+    }
+
+    .view {
+      position: absolute;
+      inset: 0;
+      overflow-y: auto;
+      padding: 0;
+      display: none;
+      scrollbar-width: thin;
+      scrollbar-color: var(--sand) transparent;
+    }
+
+    .view.active {
+      display: block;
+    }
+
+    /* ── PAGE LAYOUT ── */
+    /* Each view gets a header band + content area */
+    .view-header {
+      padding: 2rem 2.5rem 1.8rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: var(--sh-xs);
+    }
+
+    .page-title {
+      font-size: 1.5rem;
+      font-weight: 200;
+      color: var(--dark);
+      letter-spacing: -.025em;
+      line-height: 1;
+    }
+
+    .page-title strong {
+      font-weight: 700;
+    }
+
+    .page-sub {
+      font-size: .68rem;
+      font-weight: 300;
+      color: var(--sand);
+      letter-spacing: .04em;
+      margin-top: .35rem;
+    }
+
+    /* ── CONTENT PADDING WRAPPER ── */
+    .view-body {
+      padding: 2rem 2.5rem 3rem;
+      max-width: 1200px;
+    }
+
+    /* ── SECTIONS — clear visual hierarchy ── */
+    .section {
+      margin-bottom: 2.5rem;
+    }
+
+    .section-label {
+      font-size: .58rem;
+      font-weight: 700;
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      color: var(--sand);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, var(--border), transparent);
+    }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: .6rem 1.2rem;
+      border-radius: 8px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: .68rem;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      border: none;
+      cursor: none;
+      transition: all .22s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255, 255, 255, .12), transparent);
+      opacity: 0;
+      transition: opacity .22s;
+    }
+
+    .btn:hover::before {
+      opacity: 1;
+    }
+
+    .btn-primary {
+      background: var(--dark);
+      color: var(--gold2);
+    }
+
+    .btn-primary:hover {
+      background: var(--ink);
+      box-shadow: var(--sh-md);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--earth);
+      border: 1px solid var(--border);
+    }
+
+    .btn-outline:hover {
+      border-color: var(--border-md);
+      color: var(--dark);
+      background: rgba(201, 169, 110, .05);
+    }
+
+    .btn-gold {
+      background: var(--gold);
+      color: var(--dark);
+    }
+
+    .btn-gold:hover {
+      background: var(--gold2);
+      box-shadow: 0 4px 20px rgba(201, 169, 110, .3);
+    }
+
+    .btn-sm {
+      padding: .4rem .85rem;
+      font-size: .62rem;
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid rgba(220, 80, 80, .22);
+    }
+
+    .btn-danger:hover {
+      background: rgba(220, 80, 80, .06);
+      border-color: rgba(220, 80, 80, .45);
+    }
+
+    .btn-icon {
+      padding: .45rem;
+    }
+
+    /* ── STAT CARDS — marble tiles ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+    }
+
+    .stat-card {
+      padding: 1.4rem 1.5rem;
+      background:
+        linear-gradient(150deg,
+          rgba(255, 255, 255, .98) 0%,
+          rgba(250, 247, 242, .96) 55%,
+          rgba(244, 240, 233, .92) 100%);
+      border: 1px solid rgba(201, 169, 110, .18);
+      border-top: 1px solid rgba(255, 255, 255, .95);
+      border-radius: var(--r-lg);
+      box-shadow:
+        0 1px 0 rgba(255, 255, 255, 1) inset,
+        var(--sh-sm),
+        0 0 0 1px rgba(201, 169, 110, .04);
+      position: relative;
+      overflow: hidden;
+      cursor: default;
+      transition: transform .3s, box-shadow .3s, border-color .3s;
+    }
+
+    /* marble vein */
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(118deg,
+          transparent 25%, rgba(201, 169, 110, .05) 45%,
+          rgba(255, 253, 248, .3) 52%, rgba(201, 169, 110, .04) 59%, transparent 75%);
+      pointer-events: none;
+    }
+
+    /* light sweep on hover */
+    .stat-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -120%;
+      width: 55%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .5), transparent);
+      transition: left .55s ease;
+      pointer-events: none;
+    }
+
+    .stat-card:hover::after {
+      left: 160%;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 1) inset, var(--sh-md), 0 0 0 1px rgba(201, 169, 110, .15);
+      border-color: rgba(201, 169, 110, .35);
+    }
+
+    .stat-icon {
+      font-size: 1rem;
+      margin-bottom: .75rem;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      background: linear-gradient(135deg, rgba(201, 169, 110, .12), rgba(201, 169, 110, .05));
+      border: 1px solid rgba(201, 169, 110, .16);
+      position: relative;
+      z-index: 1;
+    }
+
+    .stat-num {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--dark);
+      line-height: 1;
+      margin-bottom: .25rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .stat-label {
+      font-size: .6rem;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--sand);
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── MAP OVERVIEW ── */
+    .map-overview-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      box-shadow: var(--sh-sm);
+      overflow: hidden;
+    }
+
+    .map-overview-header {
+      padding: .85rem 1.4rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(to right, var(--surface2), var(--surface));
+    }
+
+    .map-overview-title {
+      font-size: .62rem;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--earth);
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .map-overview-count {
+      font-size: .6rem;
+      color: var(--sand);
+      padding: .18rem .55rem;
+      background: rgba(201, 169, 110, .06);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      letter-spacing: .06em;
+    }
+
+    #overview-map {
+      height: 200px;
+    }
+
+    /* ── MEETING CARDS — marble slabs ── */
+    .meetings-grid {
+      display: flex;
+      flex-direction: column;
+      gap: .85rem;
+    }
+
+    .meeting-card {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 1.2rem;
+      padding: 1.2rem 1.5rem;
+      background: linear-gradient(152deg,
+          rgba(255, 255, 255, .98) 0%,
+          rgba(251, 249, 245, .97) 55%,
+          rgba(245, 241, 235, .94) 100%);
+      border: 1px solid rgba(201, 169, 110, .15);
+      border-top: 1px solid rgba(255, 255, 255, .9);
+      border-radius: var(--r);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 1) inset, var(--sh-xs);
+      transition: all .3s cubic-bezier(.2, .8, .2, 1);
+      position: relative;
+      overflow: hidden;
+      cursor: default;
+    }
+
+    /* subtle marble pattern */
+    .meeting-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(114deg,
+          transparent 22%, rgba(201, 169, 110, .035) 42%,
+          rgba(255, 253, 249, .22) 50%, rgba(201, 169, 110, .03) 58%, transparent 78%);
+      pointer-events: none;
+      opacity: .7;
+    }
+
+    /* left accent line reveals on hover */
+    .meeting-card::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 12%;
+      bottom: 12%;
+      width: 2.5px;
+      background: linear-gradient(to bottom, transparent, var(--gold), transparent);
+      border-radius: 0 2px 2px 0;
+      transform: scaleY(0);
+      transition: transform .3s ease;
+      transform-origin: center;
+      box-shadow: 2px 0 10px rgba(201, 169, 110, .25);
+    }
+
+    .meeting-card:hover::after {
+      transform: scaleY(1);
+    }
+
+    .card-shine {
+      position: absolute;
+      top: 0;
+      left: -120%;
+      width: 45%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .38), transparent);
+      transition: left .5s ease;
+      pointer-events: none;
+    }
+
+    .meeting-card:hover .card-shine {
+      left: 160%;
+    }
+
+    .meeting-card:hover {
+      border-color: rgba(201, 169, 110, .32);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 1) inset, var(--sh-md), -4px 0 0 rgba(201, 169, 110, .12);
+      transform: translateX(4px) translateY(-1px);
+    }
+
+    .meeting-info {
+      position: relative;
+      z-index: 1;
+    }
+
+    .meeting-title {
+      font-size: .95rem;
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: .45rem;
+      letter-spacing: -.01em;
+    }
+
+    .meeting-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem;
+      align-items: center;
+    }
+
+    .meta-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: .6rem;
+      font-weight: 400;
+      letter-spacing: .03em;
+      color: var(--earth);
+      padding: .2rem .6rem;
+      background: rgba(245, 242, 236, .9);
+      border: 1px solid rgba(201, 169, 110, .13);
+      border-radius: 100px;
+    }
+
+    .meta-pill.active-now {
+      color: var(--gold);
+      background: rgba(201, 169, 110, .08);
+      border-color: rgba(201, 169, 110, .28);
+      font-weight: 600;
+      box-shadow: 0 0 8px rgba(201, 169, 110, .12);
+    }
+
+    .meta-dot-live {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--gold);
+      animation: pulse 1.5s infinite;
+      flex-shrink: 0;
+    }
+
+    .meeting-actions {
+      display: flex;
+      gap: .4rem;
+      align-items: center;
+      flex-wrap: wrap;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── MODALS ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 500;
+      background: rgba(18, 16, 13, .55);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: var(--sh-lg);
+      width: 100%;
+      max-width: 640px;
+      max-height: 88vh;
+      overflow-y: auto;
+      position: relative;
+      transform: translateY(14px) scale(.98);
+      transition: transform .3s cubic-bezier(.2, .8, .2, 1);
+      scrollbar-width: thin;
+      scrollbar-color: var(--sand) transparent;
+    }
+
+    .modal-overlay.open .modal {
+      transform: translateY(0) scale(1);
+    }
+
+    .modal-glow {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1.5px;
+      background: linear-gradient(90deg, transparent 10%, var(--gold) 50%, transparent 90%);
+      border-radius: 20px 20px 0 0;
+      opacity: 0;
+      transition: opacity .3s;
+    }
+
+    .modal-overlay.open .modal-glow {
+      opacity: 1;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 1.6rem 1.8rem 1.2rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-eyebrow {
+      font-size: .58rem;
+      font-weight: 700;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: .35rem;
+    }
+
+    .modal-title {
+      font-size: 1.15rem;
+      font-weight: 500;
+      color: var(--dark);
+    }
+
+    .modal-close {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: none;
+      transition: all .2s;
+      color: var(--earth);
+      font-size: .8rem;
+    }
+
+    .modal-close:hover {
+      border-color: rgba(220, 80, 80, .3);
+      color: var(--danger);
+      background: rgba(220, 80, 80, .05);
+    }
+
+    .modal-body {
+      padding: 1.4rem 1.8rem 1.8rem;
+    }
+
+    .modal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: .6rem;
+      padding: 1.2rem 1.8rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface2);
+    }
+
+    /* ── FORM FIELDS ── */
+    .form-row {
+      display: grid;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-row.cols-2 {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: .45rem;
+    }
+
+    .form-label {
+      font-size: .6rem;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--earth);
+    }
+
+    .form-input,
+    .form-select,
+    .form-textarea {
+      padding: .7rem .95rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: .82rem;
+      font-weight: 300;
+      color: var(--dark);
+      outline: none;
+      transition: all .25s;
+    }
+
+    .form-input::placeholder,
+    .form-textarea::placeholder {
+      color: var(--sand);
+      font-weight: 300;
+    }
+
+    .form-input:focus,
+    .form-select:focus,
+    .form-textarea:focus {
+      background: var(--surface);
+      border-color: rgba(201, 169, 110, .5);
+      box-shadow: 0 0 0 3px rgba(201, 169, 110, .08);
+    }
+
+    .form-textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    /* toggle */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .75rem 0;
+    }
+
+    .toggle-label {
+      font-size: .78rem;
+      font-weight: 300;
+      color: var(--earth);
+    }
+
+    .toggle {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 22px;
+      cursor: none;
+    }
+
+    .toggle input {
+      display: none;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: var(--border);
+      border-radius: 100px;
+      transition: .3s;
+    }
+
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 2px;
+      top: 2px;
+      background: white;
+      border-radius: 50%;
+      transition: .3s;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, .15);
+    }
+
+    .toggle input:checked+.toggle-slider {
+      background: var(--gold);
+    }
+
+    .toggle input:checked+.toggle-slider::before {
+      transform: translateX(18px);
+    }
+
+    /* map container (in modal) */
+    #map-container {
+      height: 220px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      margin-top: .4rem;
+    }
+
+    .map-hint {
+      font-size: .64rem;
+      color: var(--sand);
+      margin-top: .5rem;
+      letter-spacing: .03em;
+    }
+
+    /* ── UPLOAD ── */
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all .25s;
+      position: relative;
+      background: var(--surface2);
+    }
+
+    .upload-area:hover {
+      border-color: var(--border-md);
+      background: rgba(201, 169, 110, .03);
+    }
+
+    .upload-area input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .upload-icon {
+      font-size: 1.5rem;
+      margin-bottom: .6rem;
+    }
+
+    .upload-text {
+      font-size: .78rem;
+      font-weight: 400;
+      color: var(--earth);
+      margin-bottom: .3rem;
+    }
+
+    .upload-sub {
+      font-size: .65rem;
+      color: var(--sand);
+    }
+
+    .progress-wrap {
+      margin-top: 1rem;
+      display: none;
+    }
+
+    .progress-bar {
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: .4rem;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--gold), var(--gold2));
+      border-radius: 2px;
+      transition: width .4s ease;
+      width: 0;
+    }
+
+    .progress-label {
+      font-size: .65rem;
+      color: var(--sand);
+      letter-spacing: .03em;
+    }
+
+    /* ── ATTENDANCE TABLE ── */
+    .attendance-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .attendance-table th {
+      font-size: .58rem;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--earth);
+      padding: .7rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+      position: sticky;
+      top: 0;
+    }
+
+    .attendance-table td {
+      font-size: .76rem;
+      font-weight: 300;
+      color: var(--dark);
+      padding: .7rem 1rem;
+      border-bottom: 1px solid rgba(201, 169, 110, .05);
+    }
+
+    .attendance-table tr:hover td {
+      background: rgba(201, 169, 110, .025);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: .58rem;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: .22rem .65rem;
+      border-radius: 100px;
+    }
+
+    .badge-ok {
+      color: #22c55e;
+      background: rgba(34, 197, 94, .08);
+      border: 1px solid rgba(34, 197, 94, .18);
+    }
+
+    .badge-pending {
+      color: var(--earth);
+      background: rgba(201, 169, 110, .08);
+      border: 1px solid rgba(201, 169, 110, .18);
+    }
+
+    .badge-denied {
+      color: var(--danger);
+      background: rgba(220, 80, 80, .08);
+      border: 1px solid rgba(220, 80, 80, .18);
+    }
+
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: auto;
+      max-height: 420px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--sand) transparent;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      box-shadow: var(--sh-sm);
+    }
+
+    /* ── EMPTY STATES ── */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+    }
+
+    .empty-icon {
+      font-size: 1.8rem;
+      color: rgba(201, 169, 110, .35);
+      margin-bottom: 1rem;
+      display: block;
+    }
+
+    .empty-title {
+      font-size: .88rem;
+      font-weight: 500;
+      color: var(--umber);
+      margin-bottom: .5rem;
+    }
+
+    .empty-sub {
+      font-size: .72rem;
+      font-weight: 300;
+      color: var(--sand);
+      line-height: 1.6;
+      max-width: 320px;
+      margin: 0 auto;
+    }
+
+    /* ── TOASTS ── */
+    .toast-wrap {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      z-index: 9000;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+    }
+
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: .7rem 1.1rem;
+      background: var(--dark);
+      color: var(--gold2);
+      border-radius: 10px;
+      font-size: .72rem;
+      font-weight: 400;
+      box-shadow: var(--sh-lg);
+      border: 1px solid rgba(201, 169, 110, .18);
+      transform: translateX(120%);
+      transition: transform .35s cubic-bezier(.2, .8, .2, 1);
+      max-width: 320px;
+    }
+
+    .toast.success .toast-icon {
+      color: #4ade80;
+    }
+
+    .toast.error .toast-icon {
+      color: #f87171;
+    }
+
+    .toast.show {
+      transform: translateX(0);
+    }
+
+    .toast-icon {
+      font-size: .85rem;
+    }
+
+    /* ── LOADING ── */
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 8000;
+      background: rgba(245, 243, 239, .82);
+      backdrop-filter: blur(8px);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+    }
+
+    .loading-overlay.show {
+      display: flex;
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 2px solid rgba(201, 169, 110, .2);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+
+    .loading-text {
+      font-size: .72rem;
+      font-weight: 300;
+      letter-spacing: .08em;
+      color: var(--earth);
+    }
+
+    /* ── MOUSE GLOW ── */
+    .mouse-glow {
+      position: fixed;
+      pointer-events: none;
+      z-index: 1;
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(circle, rgba(201, 169, 110, .04) 0%, transparent 70%);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      transition: left .08s, top .08s;
+    }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(201, 169, 110, .2);
+      border-radius: 2px;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media(max-width:768px) {
+      .view-body {
+        padding: 1.2rem;
+      }
+
+      .view-header {
+        padding: 1.2rem;
+      }
+
+      .form-row.cols-2 {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        padding: 0 1rem;
+        gap: 1rem;
+      }
+
+      .nav-tab .tab-label {
+        display: none;
+      }
+
+      .meeting-card {
+        grid-template-columns: 1fr;
+        gap: .8rem;
+      }
+
+      .meeting-actions {
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+
+</head>
+
+<body>
+
+  <div id="cur"></div>
+  <div id="cur-ring"></div>
+  <div class="mouse-glow" id="mouse-glow"></div>
+
+  <!-- TOPBAR -->
+  <nav class="topbar" id="topbar">
+    <div class="logo-wrap">
+      <div class="logo-ring">
+        <div class="lr-o"></div>
+        <div class="lr-i"></div>
+        <div class="lr-d"></div>
+      </div>
+      <div class="logo-text">Smart<span>Pass</span></div>
+    </div>
+
+    <div class="nav-tabs">
+      <button class="nav-tab active" data-view="meetings" onclick="showView('meetings')">
+        <span class="tab-icon">◈</span><span class="tab-label">Reuniões</span>
+      </button>
+      <button class="nav-tab" data-view="attendance" onclick="showView('attendance')">
+        <span class="tab-icon">◉</span><span class="tab-label">Presença</span>
+      </button>
+      <button class="nav-tab" data-view="settings" onclick="showView('settings')">
+        <span class="tab-icon">◎</span><span class="tab-label">Configurar</span>
+      </button>
+    </div>
+
+    <div class="user-area">
+      <div class="user-badge" id="user-badge">
+        <div class="user-avatar" id="user-avatar">AD</div>
+        <span class="user-email" id="user-email">admin</span>
+        <span class="user-role" id="user-role">Admin</span>
+      </div>
+      <button class="logout-btn" onclick="logout()" title="Sair">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <polyline points="16 17 21 12 16 7" />
+          <line x1="21" y1="12" x2="9" y2="12" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="nav-glow">
+      <div class="nav-glow-beam"></div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- VIEW: REUNIÕES -->
+    <div class="view active" id="view-meetings">
+
+      <!-- Sticky page header -->
+      <div class="view-header">
+        <div class="view-header-left">
+          <div class="page-title">Reuniões</div>
+          <div class="page-sub">Gerencie e acompanhe os eventos de presença</div>
+        </div>
+        <button class="btn btn-primary" onclick="openNewMeeting()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Nova Reunião
+        </button>
+      </div>
+
+      <div class="view-body">
+
+        <!-- KPIs -->
+        <div class="section">
+          <div class="section-label">Visão Geral</div>
+          <div class="stats-grid" id="overview-stats">
+            <div class="stat-card">
+              <div class="stat-icon">◈</div>
+              <div class="stat-num" id="stat-total">—</div>
+              <div class="stat-label">Reuniões</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">◉</div>
+              <div class="stat-num" id="stat-active">—</div>
+              <div class="stat-label">Em andamento</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">◎</div>
+              <div class="stat-num" id="stat-invitees">—</div>
+              <div class="stat-label">Convidados hoje</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Map -->
+        <div class="section">
+          <div class="section-label">Localização</div>
+          <div class="map-overview-card">
+            <div class="map-overview-header">
+              <div class="map-overview-title">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                Mapa das Reuniões
+              </div>
+              <div class="map-overview-count" id="map-count">— reuniões</div>
+            </div>
+            <div id="overview-map"></div>
+          </div>
+        </div>
+
+        <!-- List -->
+        <div class="section">
+          <div class="section-label">Lista de Reuniões</div>
+          <div class="meetings-grid" id="meetings-list">
+            <div class="empty-state">
+              <span class="empty-icon">◈</span>
+              <div class="empty-title">Carregando reuniões...</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /view-body -->
+    </div>
+
+    <!-- VIEW: PRESENÇA -->
+    <div class="view" id="view-attendance">
+      <div class="view-header">
+        <div class="view-header-left">
+          <div class="page-title" id="att-meeting-title">Selecione uma reunião</div>
+          <div class="page-sub" id="att-meeting-sub">Escolha uma reunião para ver a lista de presença</div>
+        </div>
+        <div style="display:flex;gap:.5rem;" id="att-actions">
+          <button class="btn btn-outline btn-sm" id="btn-csv" onclick="exportFile('csv')">↓ CSV</button>
+          <button class="btn btn-outline btn-sm" id="btn-xlsx" onclick="exportFile('xlsx')">↓ Excel</button>
+          <button class="btn btn-outline btn-sm" id="btn-pdf" onclick="exportFile('pdf')">↓ PDF</button>
+          <button class="btn btn-outline btn-sm" id="btn-ics" onclick="exportFile('ics')">↓ Calendário</button>
+        </div>
+      </div>
+      <div class="view-body" id="att-content">
+        <div class="empty-state">
+          <span class="empty-icon">◎</span>
+          <div class="empty-title">Nenhuma reunião selecionada</div>
+          <div class="empty-sub">Vá à aba Reuniões e clique em "Presença" em uma reunião.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW: CONFIGURAR -->
+    <div class="view" id="view-settings">
+      <div class="view-header">
+        <div class="view-header-left">
+          <div class="page-title">Configurar Reunião</div>
+          <div class="page-sub">Upload de convidados e template de e-mail</div>
+        </div>
+      </div>
+      <div class="view-body" id="settings-content">
+        <div class="empty-state">
+          <span class="empty-icon">◇</span>
+          <div class="empty-title">Selecione uma reunião</div>
+          <div class="empty-sub">Vá à aba Reuniões e clique em "Importar" para subir a lista de convidados.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+
+  <!-- MODAL: NOVA/EDITAR REUNIÃO -->
+  <div class="modal-overlay" id="modal-meeting">
+    <div class="modal">
+      <div class="modal-glow"></div>
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-eyebrow" id="modal-meeting-eyebrow">Nova Reunião</div>
+          <div class="modal-title" id="modal-meeting-title">Preencha os dados da reunião</div>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-meeting')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Título da reunião *</label>
+            <input type="text" id="m-title" class="form-input" placeholder="Ex: Reunião Mensal RH" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Local (nome)</label>
+            <input type="text" id="m-location" class="form-input" placeholder="Ex: Sala 3 — Torre Norte" />
+          </div>
+        </div>
+        <div class="form-row cols-2">
+          <div class="form-group">
+            <label class="form-label">Início</label>
+            <input type="datetime-local" id="m-start" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fim</label>
+            <input type="datetime-local" id="m-end" class="form-input" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Raio de validação (metros)</label>
+            <input type="number" id="m-radius" class="form-input" value="150" min="10" max="2000" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Localização no mapa — clique para definir o ponto</label>
+            <div id="map-container"></div>
+            <div class="map-hint">📍 Clique no mapa para definir o ponto de geofence</div>
+            <input type="hidden" id="m-lat" />
+            <input type="hidden" id="m-lng" />
+          </div>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Exigir código rotativo no check-in</span>
+          <label class="toggle">
+            <input type="checkbox" id="m-require-code" checked />
+            <div class="toggle-slider"></div>
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modal-meeting')">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveMeeting()">Salvar Reunião</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: UPLOAD CONVIDADOS -->
+  <div class="modal-overlay" id="modal-upload">
+    <div class="modal">
+      <div class="modal-glow"></div>
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-eyebrow">Upload de Convidados</div>
+          <div class="modal-title" id="modal-upload-meeting-name">—</div>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-upload')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom:1.2rem;">
+          <div style="font-size:.75rem;font-weight:300;color:var(--earth);line-height:1.7;">
+            Suba um Excel com as colunas: <strong style="color:var(--dark);">nome, email, Área, valid_from,
+              valid_to</strong> (empresa opcional).<br>
+            O sistema criará os convidados e disparará os convites por e-mail automaticamente.
+          </div>
+        </div>
+        <div class="upload-area" id="upload-area">
+          <input type="file" id="file-input" accept=".xlsx,.xls" />
+          <div class="upload-icon">📋</div>
+          <div class="upload-text"><strong>Clique para selecionar</strong> ou arraste o arquivo aqui</div>
+          <div class="upload-sub" id="upload-filename">Formatos aceitos: .xlsx · .xls</div>
+        </div>
+        <div class="progress-wrap" id="progress-wrap">
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <div class="progress-label" id="progress-label">Enviando...</div>
+        </div>
+        <div class="modal-footer" style="margin:0 -1.8rem -1.8rem;padding-top:1.2rem;">
+          <button class="btn btn-outline" onclick="closeModal('modal-upload')">Cancelar</button>
+          <button class="btn btn-gold" id="btn-upload-submit" onclick="submitUpload()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="16 16 12 12 8 16" />
+              <line x1="12" y1="12" x2="12" y2="21" />
+              <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
+            </svg>
+            Importar e Enviar Convites
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD CONVIDADO MANUAL -->
+  <div class="modal-overlay" id="modal-add-invitee">
+    <div class="modal" style="max-width:480px;">
+      <div class="modal-glow"></div>
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-eyebrow">Adicionar Convidado</div>
+          <div class="modal-title">Novo convite individual</div>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-add-invitee')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nome *</label>
+            <input type="text" id="inv-name" class="form-input" placeholder="Nome completo" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">E-mail</label>
+            <input type="email" id="inv-email" class="form-input" placeholder="email@empresa.com" />
+          </div>
+        </div>
+        <div class="form-row cols-2">
+          <div class="form-group">
+            <label class="form-label">Empresa</label>
+            <input type="text" id="inv-company" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Área</label>
+            <input type="text" id="inv-area" class="form-input" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modal-add-invitee')">Cancelar</button>
+        <button class="btn btn-primary" onclick="addInvitee()">Adicionar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOASTS -->
+  <div class="toast-wrap" id="toast-wrap"></div>
+
+  <!-- LOADING -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loading-text">Processando...</div>
+  </div>
+
+  <script>
+    // ── CURSOR ──
+    const cur = document.getElementById('cur');
+    const ring = document.getElementById('cur-ring');
+    const mg = document.getElementById('mouse-glow');
+    let mx = 0, my = 0, rx = 0, ry = 0;
+    document.addEventListener('mousemove', e => {
+      mx = e.clientX; my = e.clientY;
+      cur.style.left = mx + 'px'; cur.style.top = my + 'px';
+      mg.style.left = mx + 'px'; mg.style.top = my + 'px';
+    });
+    (function animRing() { rx += (mx - rx) * .1; ry += (my - ry) * .1; ring.style.left = rx + 'px'; ring.style.top = ry + 'px'; requestAnimationFrame(animRing); })();
+    document.querySelectorAll('button,input,select,textarea,a,.meeting-card').forEach(el => {
+      el.addEventListener('mouseenter', () => { cur.style.width = '10px'; cur.style.height = '10px'; ring.style.width = '40px'; ring.style.height = '40px'; ring.style.borderColor = 'rgba(201,169,110,.8)'; });
+      el.addEventListener('mouseleave', () => { cur.style.width = '6px'; cur.style.height = '6px'; ring.style.width = '28px'; ring.style.height = '28px'; ring.style.borderColor = 'rgba(201,169,110,.5)'; });
+    });
+
+    // ── SCROLL TOPBAR ──
+    window.addEventListener('scroll', () => document.getElementById('topbar').classList.toggle('elevated', window.scrollY > 10), { passive: true });
+
+    // ── STATE ──
+    let meetings = [];
+    let currentMeetingId = null;
+    let editingMeetingId = null;
+    let mapInstance = null;
+    let mapMarker = null;
+    let uploadTargetId = null;
+    let addInviteeTargetId = null;
+
+    // ── VIEWS ──
+    function showView(name) {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view === name));
+      document.getElementById('view-' + name).classList.add('active');
+      // Leaflet needs invalidateSize when container becomes visible
+      if (name === 'meetings' && overviewMap) {
+        setTimeout(() => overviewMap.invalidateSize(), 60);
+      }
+    }
+
+    // ── TOAST ──
+    function toast(msg, type = 'success') {
+      const w = document.getElementById('toast-wrap');
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.innerHTML = `<span class="toast-icon">${type === 'success' ? '✓' : '⚠'}</span><span>${msg}</span>`;
+      w.appendChild(t);
+      requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('show')));
+      setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 3500);
+    }
+
+    // ── LOADING ──
+    function showLoading(text = 'Processando...') { const l = document.getElementById('loading-overlay'); document.getElementById('loading-text').textContent = text; l.classList.add('show'); }
+    function hideLoading() { document.getElementById('loading-overlay').classList.remove('show'); }
+
+    // ── MODALS ──
+    function openModal(id) { document.getElementById(id).classList.add('open'); document.body.style.overflow = 'hidden'; }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow = ''; }
+    document.querySelectorAll('.modal-overlay').forEach(o => { o.addEventListener('click', e => { if (e.target === o) closeModal(o.id); }); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.open').forEach(o => closeModal(o.id)); });
+
+    // ── AUTH ──
+    async function loadUser() {
+      try {
+        const r = await fetch('/api/auth/me');
+        if (!r.ok) { window.location.href = '/login'; return; }
+        const d = await r.json();
+        document.getElementById('user-email').textContent = d.email;
+        document.getElementById('user-role').textContent = d.is_admin ? 'Admin' : 'Staff';
+        document.getElementById('user-avatar').textContent = (d.email || 'AD').substring(0, 2).toUpperCase();
+      } catch { window.location.href = '/login'; }
+    }
+    async function logout() {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/login';
+    }
+
+    // ── OVERVIEW MAP (all meetings) ──
+    let overviewMap = null;
+    let overviewMarkers = [];
+
+    function initOverviewMap() {
+      if (overviewMap) return;
+      overviewMap = L.map('overview-map', {
+        zoomControl: true,
+        scrollWheelZoom: false,
+      }).setView([-23.55, -46.63], 11);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '©OSM ©Carto', maxZoom: 19
+      }).addTo(overviewMap);
+    }
+
+    function updateOverviewMap() {
+      if (!overviewMap) initOverviewMap();
+      // Remove old markers
+      overviewMarkers.forEach(m => m.remove());
+      overviewMarkers = [];
+
+      const now = new Date();
+      const withCoords = meetings.filter(m => m.lat && m.lng);
+      document.getElementById('map-count').textContent = `${withCoords.length} reunião${withCoords.length !== 1 ? 'ões' : ''}`;
+
+      if (!withCoords.length) return;
+
+      withCoords.forEach(m => {
+        const isLive = new Date(m.starts_at) <= now && new Date(m.ends_at) >= now;
+        const color = isLive ? '#c9a96e' : '#8a7a65';
+        const size = isLive ? 14 : 10;
+
+        const icon = L.divIcon({
+          html: `<div style="
+        width:${size}px;height:${size}px;
+        background:${color};border-radius:50%;
+        border:2px solid white;
+        box-shadow:0 0 ${isLive ? '12px' : '6px'} ${color};
+        ${isLive ? 'animation:pulse-map 1.5s infinite' : ''}
+      "></div>`,
+          iconSize: [size, size],
+          className: '',
+          iconAnchor: [size / 2, size / 2],
+        });
+
+        const marker = L.marker([m.lat, m.lng], { icon })
+          .bindPopup(`
+        <div style="font-family:Montserrat,sans-serif;min-width:160px;">
+          <div style="font-size:.8rem;font-weight:600;color:#1e1a15;margin-bottom:.3rem">${m.title}</div>
+          <div style="font-size:.68rem;color:#7a6a55">${m.location_name || '—'}</div>
+          ${isLive ? '<div style="font-size:.6rem;color:#c9a96e;margin-top:.3rem;font-weight:600">● Ao vivo</div>' : ''}
+        </div>
+      `)
+          .addTo(overviewMap);
+        overviewMarkers.push(marker);
+      });
+
+      // Fit bounds
+      if (withCoords.length === 1) {
+        overviewMap.setView([withCoords[0].lat, withCoords[0].lng], 14);
+      } else {
+        const bounds = L.latLngBounds(withCoords.map(m => [m.lat, m.lng]));
+        overviewMap.fitBounds(bounds, { padding: [30, 30] });
+      }
+    }
+
+    // Add pulse animation for live markers
+    const pulseStyle = document.createElement('style');
+    pulseStyle.textContent = `@keyframes pulse-map{0%,100%{box-shadow:0 0 6px #c9a96e,0 0 0 0 rgba(201,169,110,.4);}50%{box-shadow:0 0 16px #c9a96e,0 0 0 8px rgba(201,169,110,0);}}`;
+    document.head.appendChild(pulseStyle);
+
+    // ── MEETINGS ──
+    async function loadMeetings() {
+      try {
+        const r = await fetch('/api/meetings');
+        meetings = await r.json();
+        renderMeetings();
+        updateStats();
+        updateOverviewMap();
+      } catch (e) { toast('Erro ao carregar reuniões.', 'error'); }
+    }
+
+    function updateStats() {
+      const now = new Date();
+      const active = meetings.filter(m => new Date(m.starts_at) <= now && new Date(m.ends_at) >= now).length;
+      document.getElementById('stat-total').textContent = meetings.length;
+      document.getElementById('stat-active').textContent = active;
+      document.getElementById('stat-invitees').textContent = '—';
+    }
+
+    function renderMeetings() {
+      const el = document.getElementById('meetings-list');
+      if (!meetings.length) {
+        el.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">◈</div>
+      <div class="empty-title">Nenhuma reunião cadastrada</div>
+      <div class="empty-sub">Crie sua primeira reunião clicando em "Nova Reunião".</div>
+    </div>`;
+        return;
+      }
+      const now = new Date();
+      el.innerHTML = meetings.map(m => {
+        const s = new Date(m.starts_at), e = new Date(m.ends_at);
+        const isLive = s <= now && e >= now;
+        const isPast = e < now;
+        const statusPill = isLive
+          ? `<span class="meta-pill active-now"><span class="meta-dot-live"></span> Ao vivo</span>`
+          : isPast ? `<span class="meta-pill">Encerrada</span>`
+            : `<span class="meta-pill">Agendada</span>`;
+        return `<div class="meeting-card" data-id="${m.id}">
+      <div class="card-shine"></div>
+      <div class="meeting-info">
+        <div class="meeting-title">${m.title}</div>
+        <div class="meeting-meta">
+          ${statusPill}
+          <span class="meta-pill">📍 ${m.location_name || 'Local não definido'}</span>
+          <span class="meta-pill">🕐 ${fmtDt(m.starts_at)}</span>
+          <span class="meta-pill">⇢ ${fmtDt(m.ends_at)}</span>
+        </div>
+      </div>
+      <div class="meeting-actions">
+        <button class="btn btn-outline btn-sm" onclick="openReader('${m.id}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 8 12 12 14 14"/></svg>
+          Painel
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="viewAttendance('${m.id}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Presença
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="openSettings('${m.id}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="12" y1="18" x2="20" y2="18"/></svg>
+          Importar
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="openEditMeeting('${m.id}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Editar
+        </button>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="deleteMeeting('${m.id}')" title="Excluir">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+        </button>
+      </div>
+    </div>`;
+      }).join('');
+    }
+
+    function fmtDt(iso) {
+      const d = new Date(iso);
+      return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+    }
+
+    // ── NEW / EDIT MEETING ──
+    function openNewMeeting() {
+      editingMeetingId = null;
+      document.getElementById('modal-meeting-eyebrow').textContent = 'Nova Reunião';
+      document.getElementById('modal-meeting-title').textContent = 'Preencha os dados';
+      ['m-title', 'm-location', 'm-start', 'm-end'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('m-radius').value = 150;
+      document.getElementById('m-require-code').checked = true;
+      document.getElementById('m-lat').value = '';
+      document.getElementById('m-lng').value = '';
+      openModal('modal-meeting');
+      setTimeout(initMap, 200);
+    }
+
+    async function openEditMeeting(id) {
+      editingMeetingId = id;
+      const r = await fetch(`/api/meetings/${id}`);
+      const m = await r.json();
+      document.getElementById('modal-meeting-eyebrow').textContent = 'Editar Reunião';
+      document.getElementById('modal-meeting-title').textContent = m.title;
+      document.getElementById('m-title').value = m.title || '';
+      document.getElementById('m-location').value = m.location_name || '';
+      document.getElementById('m-start').value = m.starts_at ? m.starts_at.substring(0, 16) : '';
+      document.getElementById('m-end').value = m.ends_at ? m.ends_at.substring(0, 16) : '';
+      document.getElementById('m-radius').value = m.radius_m || 150;
+      document.getElementById('m-require-code').checked = m.require_code !== false;
+      document.getElementById('m-lat').value = m.lat || '';
+      document.getElementById('m-lng').value = m.lng || '';
+      openModal('modal-meeting');
+      setTimeout(() => initMap(m.lat, m.lng), 200);
+    }
+
+    function initMap(lat, lng) {
+      const container = document.getElementById('map-container');
+      if (mapInstance) { mapInstance.remove(); mapInstance = null; mapMarker = null; }
+      const defLat = lat || -23.55;
+      const defLng = lng || -46.63;
+      mapInstance = L.map('map-container', { zoomControl: true }).setView([defLat, defLng], 14);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '©OSM ©Carto', maxZoom: 19 }).addTo(mapInstance);
+      const icon = L.divIcon({ html: `<div style="width:14px;height:14px;background:${getComputedStyle(document.documentElement).getPropertyValue('--gold').trim()};border-radius:50%;border:2px solid white;box-shadow:0 0 8px rgba(201,169,110,.8);"></div>`, iconSize: [14, 14], className: '' });
+      if (lat && lng) {
+        mapMarker = L.marker([lat, lng], { icon }).addTo(mapInstance);
+        document.getElementById('m-lat').value = lat;
+        document.getElementById('m-lng').value = lng;
+      }
+      mapInstance.on('click', e => {
+        const { lat: la, lng: ln } = e.latlng;
+        document.getElementById('m-lat').value = la;
+        document.getElementById('m-lng').value = ln;
+        if (mapMarker) mapMarker.setLatLng([la, ln]);
+        else { mapMarker = L.marker([la, ln], { icon }).addTo(mapInstance); }
+      });
+    }
+
+    async function saveMeeting() {
+      const title = document.getElementById('m-title').value.trim();
+      const lat = parseFloat(document.getElementById('m-lat').value);
+      const lng = parseFloat(document.getElementById('m-lng').value);
+      if (!title) { toast('Título é obrigatório.', 'error'); return; }
+      if (isNaN(lat) || isNaN(lng)) { toast('Defina o local no mapa.', 'error'); return; }
+      const body = {
+        title,
+        location_name: document.getElementById('m-location').value.trim(),
+        lat, lng,
+        radius_m: parseInt(document.getElementById('m-radius').value) || 150,
+        starts_at: document.getElementById('m-start').value || new Date().toISOString(),
+        ends_at: document.getElementById('m-end').value || new Date(Date.now() + 3600000).toISOString(),
+        require_code: document.getElementById('m-require-code').checked,
+      };
+      showLoading(editingMeetingId ? 'Salvando alterações...' : 'Criando reunião...');
+      try {
+        const url = editingMeetingId ? `/api/meetings/${editingMeetingId}` : '/api/meetings';
+        const method = editingMeetingId ? 'PUT' : 'POST';
+        const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const d = await r.json();
+        if (!r.ok) { toast(d.error || 'Erro ao salvar.', 'error'); return; }
+        closeModal('modal-meeting');
+        toast(editingMeetingId ? 'Reunião atualizada!' : 'Reunião criada!');
+        loadMeetings();
+      } catch { toast('Erro de conexão.', 'error'); }
+      finally { hideLoading(); }
+    }
+
+    async function deleteMeeting(id) {
+      if (!confirm('Excluir esta reunião e todos os convidados vinculados?')) return;
+      showLoading('Excluindo...');
+      try {
+        await fetch(`/api/meetings/${id}`, { method: 'DELETE' });
+        toast('Reunião excluída.');
+        loadMeetings();
+      } catch { toast('Erro ao excluir.', 'error'); }
+      finally { hideLoading(); }
+    }
+
+    // ── ATTENDANCE ──
+    async function viewAttendance(id) {
+      currentMeetingId = id;
+      showView('attendance');
+      const m = meetings.find(x => x.id === id);
+      if (m) {
+        document.getElementById('att-meeting-title').textContent = m.title;
+        document.getElementById('att-meeting-sub').textContent = `${fmtDt(m.starts_at)} → ${fmtDt(m.ends_at)}`;
+      }
+      document.getElementById('att-actions').style.display = 'flex';
+      await loadAttendance(id);
+    }
+
+    async function loadAttendance(id) {
+      document.getElementById('att-content').innerHTML = `<div style="text-align:center;padding:3rem;"><div style="width:32px;height:32px;border:2px solid rgba(201,169,110,.2);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1rem;"></div><div style="font-size:.75rem;color:var(--earth);">Carregando...</div></div>`;
+      try {
+        const [att, stats] = await Promise.all([
+          fetch(`/api/meetings/${id}/attendance`).then(r => r.json()),
+          fetch(`/api/meetings/${id}/stats`).then(r => r.json()),
+        ]);
+        const { meeting, invitees } = att;
+        const kpis = `<div class="stats-grid" style="margin-bottom:1.5rem;">
+      <div class="stat-card"><div class="stat-icon">◎</div><div class="stat-num">${stats.total || 0}</div><div class="stat-label">Total</div></div>
+      <div class="stat-card"><div class="stat-icon">✓</div><div class="stat-num">${stats.checked_in || 0}</div><div class="stat-label">Confirmados</div></div>
+      <div class="stat-card"><div class="stat-icon">◷</div><div class="stat-num">${stats.pending || 0}</div><div class="stat-label">Pendentes</div></div>
+      <div class="stat-card"><div class="stat-icon">%</div><div class="stat-num">${Math.round((stats.rate || 0) * 100)}%</div><div class="stat-label">Taxa</div></div>
+    </div>`;
+        const rows = (invitees || []).map(inv => `<tr>
+      <td>${inv.name || '—'}</td>
+      <td>${inv.email || '—'}</td>
+      <td>${inv.area || '—'}</td>
+      <td><span class="badge ${inv.checked_in ? 'badge-ok' : 'badge-pending'}">${inv.checked_in ? '✓ Confirmado' : 'Pendente'}</span></td>
+      <td>${inv.checked_in_at ? new Date(inv.checked_in_at).toLocaleString('pt-BR') : '—'}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="resendInvite('${id}','${inv.id}')">Reenviar</button>
+      </td>
+    </tr>`).join('');
+        document.getElementById('att-content').innerHTML = kpis + `<div class="card"><div class="table-wrap"><table class="attendance-table">
+      <thead><tr><th>Nome</th><th>E-mail</th><th>Área</th><th>Status</th><th>Confirmado em</th><th>Ações</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--earth);">Nenhum convidado.</td></tr>'}</tbody>
+    </table></div></div>
+    <div style="margin-top:1rem;text-align:right;">
+      <button class="btn btn-outline btn-sm" onclick="openAddInvitee('${id}')">+ Adicionar convidado</button>
+    </div>`;
+      } catch { toast('Erro ao carregar presença.', 'error'); }
+    }
+
+    async function resendInvite(meetingId, inviteeId) {
+      try {
+        const r = await fetch(`/api/meetings/${meetingId}/invitees/${inviteeId}/resend`, { method: 'POST' });
+        r.ok ? toast('Convite reenviado!') : toast('Erro ao reenviar.', 'error');
+      } catch { toast('Erro de conexão.', 'error'); }
+    }
+
+    // ── EXPORT ──
+    function exportFile(type) {
+      if (!currentMeetingId) { toast('Nenhuma reunião selecionada.', 'error'); return; }
+      if (type === 'ics') { window.open(`/api/meetings/${currentMeetingId}/export/ics`); return; }
+      if (type === 'pdf') { window.open(`/api/meetings/${currentMeetingId}/export/pdf`); return; }
+      window.open(`/api/meetings/${currentMeetingId}/export/${type}`);
+    }
+
+    // ── SETTINGS / UPLOAD ──
+    function openSettings(id) {
+      uploadTargetId = id;
+      const m = meetings.find(x => x.id === id);
+      document.getElementById('modal-upload-meeting-name').textContent = m ? m.title : '—';
+      document.getElementById('upload-filename').textContent = 'Formatos aceitos: .xlsx · .xls';
+      document.getElementById('progress-wrap').style.display = 'none';
+      document.getElementById('progress-fill').style.width = '0';
+      openModal('modal-upload');
+    }
+
+    document.getElementById('file-input').addEventListener('change', e => {
+      const f = e.target.files[0];
+      if (f) document.getElementById('upload-filename').textContent = `📎 ${f.name}`;
+    });
+
+    async function submitUpload() {
+      const file = document.getElementById('file-input').files[0];
+      if (!file) { toast('Selecione um arquivo Excel.', 'error'); return; }
+      if (!uploadTargetId) { toast('Nenhuma reunião selecionada.', 'error'); return; }
+      const btn = document.getElementById('btn-upload-submit');
+      btn.disabled = true;
+      document.getElementById('progress-wrap').style.display = 'block';
+      document.getElementById('progress-label').textContent = 'Enviando arquivo...';
+      document.getElementById('progress-fill').style.width = '30%';
+      const fd = new FormData();
+      fd.append('file', file);
+      try {
+        const r = await fetch(`/api/meetings/${uploadTargetId}/upload`, { method: 'POST', body: fd });
+        const d = await r.json();
+        if (!r.ok) { toast(d.error || 'Erro no upload.', 'error'); return; }
+        document.getElementById('progress-fill').style.width = '70%';
+        document.getElementById('progress-label').textContent = `${d.created} criados · Enviando e-mails (job: ${d.job_id?.substring(0, 8)}...)`;
+        pollJob(d.job_id);
+        closeModal('modal-upload');
+        toast(`${d.created} convidados criados. E-mails sendo enviados...`);
+      } catch { toast('Erro de conexão.', 'error'); }
+      finally { btn.disabled = false; }
+    }
+
+    async function pollJob(jobId, attempt = 0) {
+      if (attempt > 30) return;
+      try {
+        const r = await fetch(`/api/jobs/${jobId}`);
+        const d = await r.json();
+        if (d.status === 'done') {
+          toast(`E-mails enviados: ${d.emailed}. Falhas: ${d.failed?.length || 0}.`);
+        } else {
+          setTimeout(() => pollJob(jobId, attempt + 1), 2000);
+        }
+      } catch { }
+    }
+
+    // ── ADD INVITEE ──
+    function openAddInvitee(id) {
+      addInviteeTargetId = id;
+      ['inv-name', 'inv-email', 'inv-company', 'inv-area'].forEach(i => document.getElementById(i).value = '');
+      openModal('modal-add-invitee');
+    }
+
+    async function addInvitee() {
+      const name = document.getElementById('inv-name').value.trim();
+      if (!name) { toast('Nome é obrigatório.', 'error'); return; }
+      showLoading('Adicionando convidado...');
+      try {
+        const r = await fetch(`/api/meetings/${addInviteeTargetId}/invitees`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            email: document.getElementById('inv-email').value.trim(),
+            company: document.getElementById('inv-company').value.trim(),
+            area: document.getElementById('inv-area').value.trim(),
+          })
+        });
+        const d = await r.json();
+        if (!r.ok) { toast(d.error || 'Erro.', 'error'); return; }
+        closeModal('modal-add-invitee');
+        toast('Convidado adicionado!');
+        if (currentMeetingId === addInviteeTargetId) loadAttendance(addInviteeTargetId);
+      } catch { toast('Erro.', 'error'); }
+      finally { hideLoading(); }
+    }
+
+    function openReader(id) {
+      window.open(`/reader?meeting_id=${id}`, '_blank');
+    }
+
+    // ── INIT ──
+    loadUser();
+    loadMeetings();
+    setInterval(loadMeetings, 30000);
+  </script>
+</body>
+
+</html>

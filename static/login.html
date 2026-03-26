@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartPass — Acesso</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300;400;500;600;700&display=swap"
+    rel="stylesheet">
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --gold: #c9a96e;
+      --gold-light: #e0c48a;
+      --dark: #1a1610;
+      --ink: #0e0c09;
+      --earth: #8a7a65;
+    }
+
+    html {
+      background: var(--ink);
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: 'Montserrat', sans-serif;
+      background: transparent;
+      cursor: none;
+      overflow-x: hidden;
+    }
+
+    /* ── CURSOR ──────────────────────────────── */
+    #cur {
+      position: fixed;
+      width: 6px;
+      height: 6px;
+      background: var(--gold);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      transition: width .18s, height .18s;
+      mix-blend-mode: screen;
+    }
+
+    #cur-ring {
+      position: fixed;
+      width: 30px;
+      height: 30px;
+      border: 1px solid rgba(201, 169, 110, .4);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9998;
+      transform: translate(-50%, -50%);
+      transition: width .15s, height .15s, border-color .2s;
+    }
+
+    /* ── FIXED BG LAYERS ─────────────────────── */
+    #bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+    }
+
+    #particle-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .noise {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      opacity: .025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* ── STAGE ───────────────────────────────── */
+    .stage {
+      position: relative;
+      z-index: 10;
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1px 1fr;
+    }
+
+    /* ── LEFT ────────────────────────────────── */
+    .left {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 5rem 4.5rem 5rem 6rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .left-glow {
+      position: absolute;
+      width: 480px;
+      height: 480px;
+      border-radius: 50%;
+      pointer-events: none;
+      background: radial-gradient(circle, rgba(201, 169, 110, .07) 0%, transparent 70%);
+      top: 0;
+      left: 0;
+      transition: left .08s, top .08s;
+    }
+
+    /* logo */
+    .logo-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 4.5rem;
+      opacity: 0;
+      animation: fadeUp .8s .15s ease forwards;
+    }
+
+    .logo-ring-wrap {
+      position: relative;
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .lr-outer {
+      position: absolute;
+      inset: 0;
+      border: 1.5px solid rgba(201, 169, 110, .6);
+      border-radius: 50%;
+      animation: spin 10s linear infinite;
+    }
+
+    .lr-outer::before {
+      content: '';
+      position: absolute;
+      width: 5px;
+      height: 5px;
+      background: var(--gold);
+      border-radius: 50%;
+      top: -2.5px;
+      left: 50%;
+      transform: translateX(-50%);
+      box-shadow: 0 0 8px var(--gold);
+    }
+
+    .lr-inner {
+      position: absolute;
+      inset: 8px;
+      border: 1px dashed rgba(201, 169, 110, .25);
+      border-radius: 50%;
+      animation: spin 6s linear infinite reverse;
+    }
+
+    .lr-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--gold);
+      border-radius: 50%;
+      box-shadow: 0 0 12px rgba(201, 169, 110, .7);
+      animation: lpulse 2.5s ease-in-out infinite;
+    }
+
+    .logo-text {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: .05em;
+      color: rgba(255, 255, 255, .85);
+    }
+
+    .logo-text span {
+      color: var(--gold);
+    }
+
+    /* headline */
+    .headline {
+      margin-bottom: 3rem;
+      opacity: 0;
+      animation: fadeUp .8s .35s ease forwards;
+    }
+
+    .eyebrow {
+      font-size: .58rem;
+      font-weight: 500;
+      letter-spacing: .28em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .eyebrow::before {
+      content: '';
+      width: 22px;
+      height: 1px;
+      background: var(--gold);
+      opacity: .6;
+    }
+
+    .headline h1 {
+      font-size: clamp(1.9rem, 2.8vw, 2.8rem);
+      font-weight: 200;
+      line-height: 1.2;
+      color: rgba(255, 255, 255, .88);
+      letter-spacing: -.02em;
+    }
+
+    .headline h1 strong {
+      font-weight: 700;
+      color: #fff;
+      display: block;
+    }
+
+    /* features */
+    .features {
+      display: flex;
+      flex-direction: column;
+      gap: .85rem;
+      opacity: 0;
+      animation: fadeUp .8s .55s ease forwards;
+    }
+
+    .feat-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: .73rem;
+      font-weight: 300;
+      color: rgba(255, 255, 255, .4);
+      letter-spacing: .02em;
+      transition: color .25s;
+    }
+
+    .feat-item:hover {
+      color: rgba(255, 255, 255, .72);
+    }
+
+    .feat-dot {
+      width: 5px;
+      height: 5px;
+      background: rgba(201, 169, 110, .35);
+      border-radius: 50%;
+      flex-shrink: 0;
+      transition: background .25s, box-shadow .25s;
+    }
+
+    .feat-item:hover .feat-dot {
+      background: var(--gold);
+      box-shadow: 0 0 8px var(--gold);
+    }
+
+    /* ── DIVIDER ──────────────────────────────── */
+    .divider {
+      background: linear-gradient(to bottom,
+          transparent 4%, rgba(201, 169, 110, .14) 25%,
+          rgba(201, 169, 110, .14) 75%, transparent 96%);
+    }
+
+    /* ── RIGHT ───────────────────────────────── */
+    .right {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 5rem 6rem 5rem 4.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .right-glow {
+      position: absolute;
+      width: 380px;
+      height: 380px;
+      border-radius: 50%;
+      pointer-events: none;
+      background: radial-gradient(circle, rgba(201, 169, 110, .055) 0%, transparent 70%);
+      top: 0;
+      left: 0;
+    }
+
+    /* form card */
+    .form-card {
+      width: 100%;
+      max-width: 400px;
+      opacity: 0;
+      animation: fadeUp .9s .45s ease forwards;
+      position: relative;
+      z-index: 1;
+    }
+
+    .form-title {
+      font-size: 1.4rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, .92);
+      letter-spacing: -.01em;
+      margin-bottom: .4rem;
+    }
+
+    .form-sub {
+      font-size: .73rem;
+      font-weight: 300;
+      color: rgba(255, 255, 255, .32);
+      letter-spacing: .04em;
+      margin-bottom: 2.4rem;
+    }
+
+    /* fields */
+    .field {
+      margin-bottom: 1.35rem;
+      position: relative;
+    }
+
+    .field label {
+      display: block;
+      font-size: .6rem;
+      font-weight: 600;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, .28);
+      margin-bottom: .55rem;
+      transition: color .25s;
+    }
+
+    .field:focus-within label {
+      color: var(--gold);
+    }
+
+    .input-wrap {
+      position: relative;
+    }
+
+    .input-wrap input {
+      width: 100%;
+      padding: .9rem 1.1rem;
+      background: rgba(255, 255, 255, .04);
+      border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: 10px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: .84rem;
+      font-weight: 300;
+      color: rgba(255, 255, 255, .85);
+      outline: none;
+      transition: all .3s;
+      letter-spacing: .03em;
+    }
+
+    .input-wrap input::placeholder {
+      color: rgba(255, 255, 255, .18);
+    }
+
+    .input-wrap input:focus {
+      background: rgba(201, 169, 110, .055);
+      border-color: rgba(201, 169, 110, .4);
+      box-shadow: 0 0 0 3px rgba(201, 169, 110, .06);
+    }
+
+    .input-glow {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      width: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      transform: translateX(-50%);
+      transition: width .4s ease;
+      filter: blur(.5px);
+    }
+
+    .field:focus-within .input-glow {
+      width: 90%;
+    }
+
+    .eye-btn {
+      position: absolute;
+      right: .9rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: none;
+      color: rgba(255, 255, 255, .22);
+      transition: color .2s;
+      padding: .2rem;
+    }
+
+    .eye-btn:hover {
+      color: rgba(201, 169, 110, .7);
+    }
+
+    /* submit */
+    .btn-submit {
+      width: 100%;
+      padding: .95rem;
+      background: var(--gold);
+      border: none;
+      border-radius: 10px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: .78rem;
+      font-weight: 600;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+      color: var(--dark);
+      cursor: none;
+      position: relative;
+      overflow: hidden;
+      transition: all .28s;
+      margin-top: .4rem;
+    }
+
+    .btn-submit::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255, 255, 255, .22) 0%, transparent 60%);
+      opacity: 0;
+      transition: opacity .28s;
+    }
+
+    .btn-submit:hover {
+      background: var(--gold-light);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 28px rgba(201, 169, 110, .28);
+    }
+
+    .btn-submit:hover::before {
+      opacity: 1;
+    }
+
+    .btn-submit:active {
+      transform: translateY(0);
+    }
+
+    .btn-submit.loading {
+      pointer-events: none;
+      color: transparent;
+    }
+
+    .btn-submit.loading::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='10' cy='10' r='7' fill='none' stroke='%231a1610' stroke-width='2' stroke-dasharray='32' stroke-dashoffset='32'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 10 10' to='360 10 10' dur='.8s' repeatCount='indefinite'/%3E%3C/circle%3E%3C/svg%3E") center/20px no-repeat;
+    }
+
+    /* messages */
+    .msg {
+      display: none;
+      font-size: .71rem;
+      font-weight: 400;
+      letter-spacing: .03em;
+      padding: .7rem 1rem;
+      border-radius: 8px;
+      margin-top: .9rem;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .msg.error {
+      display: flex;
+      background: rgba(220, 60, 60, .08);
+      border: 1px solid rgba(220, 60, 60, .2);
+      color: #ff8888;
+    }
+
+    .msg.success {
+      display: flex;
+      background: rgba(80, 200, 120, .08);
+      border: 1px solid rgba(80, 200, 120, .2);
+      color: #80ffaa;
+    }
+
+    .msg-icon {
+      font-size: .9rem;
+    }
+
+    /* hint */
+    .form-hint {
+      margin-top: 1.8rem;
+      font-size: .6rem;
+      font-weight: 300;
+      letter-spacing: .06em;
+      color: rgba(255, 255, 255, .16);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .hint-dot {
+      width: 4px;
+      height: 4px;
+      background: rgba(201, 169, 110, .3);
+      border-radius: 50%;
+      animation: lpulse 3s ease-in-out infinite;
+    }
+
+    /* ── KEYFRAMES ───────────────────────────── */
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes lpulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 8px rgba(201, 169, 110, .4);
+      }
+
+      50% {
+        box-shadow: 0 0 20px rgba(201, 169, 110, .85);
+      }
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(16px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ── RESPONSIVE ──────────────────────────── */
+    @media (max-width: 860px) {
+      .stage {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto;
+      }
+
+      .left {
+        padding: 3.5rem 2rem 2rem;
+        justify-content: flex-start;
+      }
+
+      .left .logo-wrap {
+        margin-bottom: 2rem;
+      }
+
+      .left .headline {
+        margin-bottom: 0;
+      }
+
+      .left .features {
+        display: none;
+      }
+
+      .left .headline h1 {
+        font-size: 1.8rem;
+      }
+
+      /* horizontal divider */
+      .divider {
+        width: auto;
+        height: 1px;
+        background: linear-gradient(90deg,
+            transparent 5%, rgba(201, 169, 110, .16) 30%,
+            rgba(201, 169, 110, .16) 70%, transparent 95%);
+      }
+
+      .right {
+        padding: 2.5rem 2rem 4rem;
+        justify-content: flex-start;
+      }
+
+      .form-card {
+        max-width: 100%;
+      }
+
+      .right-glow {
+        display: none;
+      }
+
+      #particle-canvas {
+        display: none;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .left {
+        padding: 3rem 1.4rem 1.8rem;
+      }
+
+      .right {
+        padding: 2rem 1.4rem 3.5rem;
+      }
+
+      .left .headline h1 {
+        font-size: 1.55rem;
+      }
+
+      .form-title {
+        font-size: 1.2rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="cur"></div>
+  <div id="cur-ring"></div>
+
+  <canvas id="bg-canvas"></canvas>
+  <canvas id="particle-canvas"></canvas>
+  <div class="noise"></div>
+
+  <div class="stage">
+
+    <!-- LEFT -->
+    <div class="left" id="left-panel">
+      <div class="left-glow" id="left-glow"></div>
+
+      <div class="logo-wrap">
+        <div class="logo-ring-wrap">
+          <div class="lr-outer"></div>
+          <div class="lr-inner"></div>
+          <div class="lr-dot"></div>
+        </div>
+        <div class="logo-text">Smart<span>Pass</span></div>
+      </div>
+
+      <div class="headline">
+        <div class="eyebrow">Sistema de Presença</div>
+        <h1>Controle inteligente.<br><strong>Presença verificada.</strong></h1>
+      </div>
+
+      <div class="features">
+        <div class="feat-item">
+          <div class="feat-dot"></div>Validação com geolocalização em tempo real
+        </div>
+        <div class="feat-item">
+          <div class="feat-dot"></div>Código rotativo de 60 segundos
+        </div>
+        <div class="feat-item">
+          <div class="feat-dot"></div>Auditoria completa por convidado
+        </div>
+        <div class="feat-item">
+          <div class="feat-dot"></div>Export CSV · Excel · PDF instantâneo
+        </div>
+        <div class="feat-item">
+          <div class="feat-dot"></div>Suporte a 200+ convidados simultâneos
+        </div>
+      </div>
+    </div>
+
+    <!-- DIVIDER -->
+    <div class="divider"></div>
+
+    <!-- RIGHT -->
+    <div class="right" id="right-panel">
+      <div class="right-glow" id="right-glow"></div>
+
+      <div class="form-card">
+        <div class="form-title">Bem-vindo de volta.</div>
+        <div class="form-sub">Acesse o painel de gestão de presença</div>
+
+        <form id="login-form" autocomplete="off">
+          <div class="field">
+            <label>Usuário ou e-mail</label>
+            <div class="input-wrap">
+              <input type="text" id="username" placeholder="seu@email.com" autocomplete="username" />
+              <div class="input-glow"></div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Senha</label>
+            <div class="input-wrap">
+              <input type="password" id="password" placeholder="••••••••" autocomplete="current-password"
+                style="padding-right:2.8rem" />
+              <button type="button" class="eye-btn" id="eye-btn">
+                <svg id="eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
+              <div class="input-glow"></div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-submit" id="submit-btn">Acessar Sistema</button>
+
+          <div class="msg" id="msg">
+            <span class="msg-icon"></span>
+            <span id="msg-text"></span>
+          </div>
+        </form>
+
+        <div class="form-hint">
+          <div class="hint-dot"></div>
+          SmartPass v5 · Sessão segura · 8h
+        </div>
+      </div>
+    </div>
+
+  </div><!-- .stage -->
+
+  <script>
+    // ── CURSOR ──────────────────────────────────────────────────────
+    const cur = document.getElementById('cur');
+    const ring = document.getElementById('cur-ring');
+    let mx = 0, my = 0, rx = 0, ry = 0;
+    document.addEventListener('mousemove', e => {
+      mx = e.clientX; my = e.clientY;
+      cur.style.left = mx + 'px'; cur.style.top = my + 'px';
+    });
+    (function raf() {
+      rx += (mx - rx) * .1; ry += (my - ry) * .1;
+      ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+      requestAnimationFrame(raf);
+    })();
+    document.querySelectorAll('input,button,a').forEach(el => {
+      el.addEventListener('mouseenter', () => { cur.style.width = '11px'; cur.style.height = '11px'; ring.style.width = '44px'; ring.style.height = '44px'; ring.style.borderColor = 'rgba(201,169,110,.75)'; });
+      el.addEventListener('mouseleave', () => { cur.style.width = '6px'; cur.style.height = '6px'; ring.style.width = '30px'; ring.style.height = '30px'; ring.style.borderColor = 'rgba(201,169,110,.4)'; });
+    });
+
+    // ── BACKGROUND CANVAS ───────────────────────────────────────────
+    const bgC = document.getElementById('bg-canvas');
+    const bgX = bgC.getContext('2d');
+    let W, H;
+    function resizeBg() {
+      W = bgC.width = window.innerWidth;
+      H = bgC.height = window.innerHeight;
+      drawBg();
+    }
+    function drawBg() {
+      const g = bgX.createRadialGradient(W * .68, H * .28, 0, W * .68, H * .28, W * .9);
+      g.addColorStop(0, '#1c1810');
+      g.addColorStop(.45, '#131109');
+      g.addColorStop(1, '#0d0b07');
+      bgX.fillStyle = g; bgX.fillRect(0, 0, W, H);
+      bgX.strokeStyle = 'rgba(201,169,110,.028)'; bgX.lineWidth = 1;
+      for (let x = 0; x < W; x += 60) { bgX.beginPath(); bgX.moveTo(x, 0); bgX.lineTo(x, H); bgX.stroke(); }
+      for (let y = 0; y < H; y += 60) { bgX.beginPath(); bgX.moveTo(0, y); bgX.lineTo(W, y); bgX.stroke(); }
+    }
+    resizeBg();
+    window.addEventListener('resize', resizeBg);
+
+    // ── MOUSE GLOW ──────────────────────────────────────────────────
+    const leftPanel = document.getElementById('left-panel');
+    const leftGlow = document.getElementById('left-glow');
+    leftPanel.addEventListener('mousemove', e => {
+      const r = leftPanel.getBoundingClientRect();
+      leftGlow.style.left = (e.clientX - r.left - 240) + 'px';
+      leftGlow.style.top = (e.clientY - r.top - 240) + 'px';
+    });
+
+    const rightPanel = document.getElementById('right-panel');
+    const rightGlow = document.getElementById('right-glow');
+    rightPanel.addEventListener('mousemove', e => {
+      const r = rightPanel.getBoundingClientRect();
+      rightGlow.style.left = (e.clientX - r.left - 190) + 'px';
+      rightGlow.style.top = (e.clientY - r.top - 190) + 'px';
+    });
+
+    // ══════════════════════════════════════════════════════════════
+    //  ANTIGRAVITY WAVE FIELD
+    //  Faithful recreation of the ocean/mountain particle effect.
+    //
+    //  Architecture:
+    //   • Multiple horizontal rows of dots spread across the screen
+    //   • Each dot has a Y displacement governed by spring physics
+    //   • Mouse proximity injects an upward impulse (Gaussian bell)
+    //   • Adjacent dots couple via a "transmission" coefficient —
+    //     this propagates the wave laterally like a 1D wave equation
+    //   • Rows have depth: back rows are smaller/dimmer, front brighter
+    // ══════════════════════════════════════════════════════════════
+    const pc = document.getElementById('particle-canvas');
+    const px = pc.getContext('2d');
+    let PW, PH;
+
+    // ─── Tunables ────────────────────────────────────────────────
+    const NUM_ROWS = 10;   // depth layers (back→front)
+    const COL_SPACING = 20;   // base horizontal gap between dots (px)
+
+    // Wave physics
+    const SPRING = 0.034;  // spring constant — how fast dots snap back
+    const DAMPING = 0.80;   // velocity damping per frame (0=overdamp, 1=no damp)
+    const TRANSMIT = 0.30;   // how much a dot pulls its neighbours each frame
+    const MOUSE_PULL = 3.8;    // impulse strength from mouse
+    const MOUSE_RAD = 200;    // influence radius of mouse (px)
+    const MAX_DISP = 110;    // maximum upward displacement (px)
+
+    // Visual
+    const PAL = [
+      [255, 255, 255],   // pure white
+      [255, 248, 220],   // warm white
+      [255, 228, 150],   // pale gold
+      [224, 196, 128],   // light gold
+      [201, 169, 110],   // brand gold
+      [168, 134, 68],   // deep gold
+    ];
+
+    // ─── Row config — computed per row index ─────────────────────
+    // depth=0 → back, depth=1 → front
+    function rowDepth(ri) { return ri / (NUM_ROWS - 1); }
+    function rowBaseY(ri) {
+      // Rows spread from 60% down the screen to 95% (front row near bottom)
+      return PH * (0.60 + rowDepth(ri) * 0.35);
+    }
+    function rowGap(ri) { return COL_SPACING * (0.5 + rowDepth(ri) * 0.8); }
+    function rowDotR(ri) { return 0.7 + rowDepth(ri) * 2.0; }  // radius
+    function rowAlpha(ri) { return 0.05 + rowDepth(ri) * 0.20; } // base opacity
+
+    // ─── Dot ─────────────────────────────────────────────────────
+    class Dot {
+      constructor(ri, ci, bx, by) {
+        this.ri = ri;   // row index
+        this.ci = ci;   // column index (for neighbour lookup)
+        this.bx = bx;   // rest X
+        this.by = by;   // rest Y
+        this.disp = 0;    // displacement (negative = up)
+        this.vel = 0;    // velocity
+
+        // Slight random phase for idle micro-bob
+        this.ph = Math.random() * Math.PI * 2;
+        this.phSpd = 0.007 + Math.random() * 0.005;
+        this.phAmp = 0.5 + Math.random() * 0.9;
+
+        this.depth = rowDepth(ri);
+        this.baseR = rowDotR(ri);
+        this.baseA = rowAlpha(ri);
+        this.rgb = PAL[Math.floor(Math.random() * PAL.length)];
+      }
+
+      // Inject an upward impulse from the mouse
+      mouseForce(mxp, myp) {
+        const dx = this.bx - mxp;
+        const dy = this.by - myp;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < MOUSE_RAD * MOUSE_RAD) {
+          const t = 1 - Math.sqrt(d2) / MOUSE_RAD;
+          // Smoothstep — flat at edges, steep in center
+          const f = t * t * (3 - 2 * t);
+          this.vel -= f * MOUSE_PULL;   // negative = push upward
+        }
+      }
+
+      // Pull toward neighbours (lateral wave coupling)
+      couple(left, right) {
+        const lD = left ? left.disp : this.disp;
+        const rD = right ? right.disp : this.disp;
+        const avg = (lD + rD) * 0.5;
+        this.vel += (avg - this.disp) * TRANSMIT;
+      }
+
+      step() {
+        this.ph += this.phSpd;
+        // Spring restoring force toward rest (disp → 0)
+        this.vel += -this.disp * SPRING;
+        // Damp
+        this.vel *= DAMPING;
+        // Integrate
+        this.disp += this.vel;
+        // Hard clamp
+        if (this.disp < -MAX_DISP) { this.disp = -MAX_DISP; this.vel = 0; }
+        if (this.disp > MAX_DISP * 0.12) { this.disp = MAX_DISP * 0.12; this.vel = 0; }
+      }
+
+      draw() {
+        // Idle micro-bob (only visible at rest)
+        const restness = 1 - Math.min(1, Math.abs(this.disp) / 12);
+        const bob = Math.sin(this.ph) * this.phAmp * restness;
+
+        const y = this.by + this.disp + bob;
+        const lift = Math.max(0, -this.disp);          // how far UP (px)
+        const t = Math.min(1, lift / MAX_DISP);     // 0=rest, 1=peak
+
+        const [r, g, b] = this.rgb;
+        const radius = this.baseR + t * 3.8;
+        const alpha = this.baseA + t * 0.82;
+
+        // ── Outer glow (only when displaced) ──
+        if (t > 0.04) {
+          const gr = radius * 4.5 + t * 10;
+          const grd = px.createRadialGradient(this.bx, y, 0, this.bx, y, gr);
+          grd.addColorStop(0, `rgba(${r},${g},${b},${(t * 0.28).toFixed(3)})`);
+          grd.addColorStop(0.5, `rgba(${r},${g},${b},${(t * 0.08).toFixed(3)})`);
+          grd.addColorStop(1, 'rgba(0,0,0,0)');
+          px.beginPath();
+          px.arc(this.bx, y, gr, 0, Math.PI * 2);
+          px.fillStyle = grd;
+          px.fill();
+        }
+
+        // ── Core dot — white-hot at peak ──
+        const cr = Math.round(r + (255 - r) * t * 0.75);
+        const cg = Math.round(g + (255 - g) * t * 0.75);
+        const cb = Math.round(b + (255 - b) * t * 0.65);
+        px.beginPath();
+        px.arc(this.bx, y, radius, 0, Math.PI * 2);
+        px.fillStyle = `rgba(${cr},${cg},${cb},${alpha.toFixed(3)})`;
+        px.fill();
+
+        // ── Vertical streak (motion blur) when rising ──
+        if (t > 0.22 && lift > 8) {
+          const sLen = lift * 0.65;
+          const sg = px.createLinearGradient(this.bx, y, this.bx, y + sLen);
+          sg.addColorStop(0, `rgba(${cr},${cg},${cb},${(alpha * 0.5).toFixed(3)})`);
+          sg.addColorStop(1, 'rgba(0,0,0,0)');
+          px.beginPath();
+          px.moveTo(this.bx, y);
+          px.lineTo(this.bx, y + sLen);
+          px.strokeStyle = sg;
+          px.lineWidth = radius * 0.65;
+          px.lineCap = 'round';
+          px.stroke();
+        }
+      }
+    }
+
+    // ─── Grid ────────────────────────────────────────────────────
+    let rows = [];  // rows[ri] = array of Dot, left→right
+
+    function buildGrid() {
+      rows = [];
+      for (let ri = 0; ri < NUM_ROWS; ri++) {
+        const by = rowBaseY(ri);
+        const gap = rowGap(ri);
+        const off = (ri % 2) * gap * 0.5;  // alternate-row stagger
+        const row = [];
+        let ci = 0;
+        for (let x = off; x < PW + gap; x += gap, ci++) {
+          row.push(new Dot(ri, ci, x, by));
+        }
+        rows.push(row);
+      }
+    }
+
+    function resizePC() {
+      PW = pc.width = window.innerWidth;
+      PH = pc.height = window.innerHeight;
+      buildGrid();
+    }
+    resizePC();
+    window.addEventListener('resize', resizePC);
+
+    // ─── Main loop ───────────────────────────────────────────────
+    (function waveLoop() {
+      px.clearRect(0, 0, PW, PH);
+
+      for (let ri = 0; ri < NUM_ROWS; ri++) {
+        const row = rows[ri];
+
+        // 1. Mouse impulse
+        row.forEach(d => d.mouseForce(mx, my));
+
+        // 2. Lateral coupling — collect forces first, then apply
+        //    (avoids direction-dependent asymmetry)
+        const dv = new Float32Array(row.length);
+        for (let ci = 0; ci < row.length; ci++) {
+          const lD = ci > 0 ? row[ci - 1].disp : row[ci].disp;
+          const rD = ci < row.length - 1 ? row[ci + 1].disp : row[ci].disp;
+          dv[ci] = ((lD + rD) * 0.5 - row[ci].disp) * TRANSMIT;
+        }
+        for (let ci = 0; ci < row.length; ci++) row[ci].vel += dv[ci];
+
+        // 3. Physics step
+        row.forEach(d => d.step());
+      }
+
+      // 4. Draw back-to-front
+      for (let ri = 0; ri < NUM_ROWS; ri++) {
+        rows[ri].forEach(d => d.draw());
+      }
+
+      requestAnimationFrame(waveLoop);
+    })();
+    // ── EYE TOGGLE ──────────────────────────────────────────────────
+    document.getElementById('eye-btn').addEventListener('click', () => {
+      const p = document.getElementById('password');
+      const show = p.type === 'password'; p.type = show ? 'text' : 'password';
+      document.getElementById('eye-icon').innerHTML = show
+        ? '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'
+        : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+    });
+
+    // ── FORM ────────────────────────────────────────────────────────
+    const form = document.getElementById('login-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const msgEl = document.getElementById('msg');
+    const msgText = document.getElementById('msg-text');
+
+    function showMsg(type, text) {
+      msgEl.className = 'msg ' + type;
+      msgEl.querySelector('.msg-icon').textContent = type === 'error' ? '⚠' : '✓';
+      msgText.textContent = text;
+    }
+    function hideMsg() { msgEl.className = 'msg'; }
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault(); hideMsg();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      if (!username || !password) { showMsg('error', 'Preencha usuário e senha.'); return; }
+      submitBtn.classList.add('loading'); submitBtn.textContent = '';
+      try {
+        const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+        const data = await res.json();
+        if (res.ok && data.ok) { showMsg('success', 'Acesso autorizado. Redirecionando...'); setTimeout(() => { window.location.href = '/portal'; }, 800); }
+        else showMsg('error', data.error || 'Credenciais inválidas.');
+      } catch { showMsg('error', 'Erro de conexão. Tente novamente.'); }
+      finally { submitBtn.classList.remove('loading'); submitBtn.textContent = 'Acessar Sistema'; }
+    });
+
+    document.querySelectorAll('input').forEach(inp => {
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') form.dispatchEvent(new Event('submit')); });
+    });
+  </script>
+</body>
+
+</html>

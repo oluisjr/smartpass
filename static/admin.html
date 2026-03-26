@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin - SmartPass</title>
+  <style>
+    body{font-family:Segoe UI,Arial,sans-serif;background:#0b1220;color:#e5e7eb;margin:0;display:flex;justify-content:center;align-items:center;height:100vh}
+    .card{width:520px;background:#0f1b33;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px;box-shadow:0 12px 40px rgba(0,0,0,.45)}
+    h1{margin:0 0 6px;font-size:20px}
+    p{margin:0 0 16px;opacity:.85}
+    input[type=file]{width:100%;padding:10px;background:#0b1220;border:1px dashed rgba(255,255,255,.2);border-radius:12px;color:#e5e7eb}
+    button{margin-top:12px;width:100%;padding:12px;border:0;border-radius:12px;background:#2563eb;color:#fff;font-weight:600;cursor:pointer}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .secondary{background:rgba(255,255,255,.12)}
+    pre{margin-top:14px;background:#0b1220;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px;max-height:260px;overflow:auto}
+    .hint{font-size:12px;opacity:.75;margin-top:10px;line-height:1.4}
+    code{background:rgba(255,255,255,.06);padding:2px 6px;border-radius:8px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Upload Excel (SmartPass)</h1>
+    <p>Envio linha por linha: gera SmartPass + envia link por e-mail.</p>
+
+    <input id="file" type="file" accept=".xlsx,.xls" />
+    <button id="sendBtn">Processar e enviar</button>
+    <button id="readerBtn" class="secondary" type="button">📷 Abrir Reader</button>
+
+    <div class="hint">
+      Colunas esperadas: <code>nome</code>, <code>email</code>, <code>empresa</code>, <code>evento</code>,
+      <code>tipo</code>, <code>valid_from</code>, <code>valid_to</code>.
+    </div>
+
+    <pre id="log">Aguardando arquivo...</pre>
+  </div>
+
+<script>
+  const fileInput = document.getElementById("file");
+  const btn = document.getElementById("sendBtn");
+  const readerBtn = document.getElementById("readerBtn");
+  const log = document.getElementById("log");
+
+  btn.addEventListener("click", async () => {
+    if (!fileInput.files.length) {
+      log.textContent = "Selecione um arquivo Excel primeiro.";
+      return;
+    }
+    btn.disabled = true;
+    log.textContent = "Processando... (isso pode demorar dependendo do SMTP)";
+
+    const fd = new FormData();
+    fd.append("file", fileInput.files[0]);
+
+    try {
+      const res = await fetch("/admin/upload", { method: "POST", body: fd });
+      const data = await res.json();
+      log.textContent = JSON.stringify(data, null, 2);
+    } catch (e) {
+      log.textContent = "Erro: " + e;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  readerBtn.addEventListener("click", () => {
+    window.location.href = "/static/reader.html";
+  });
+</script>
+</body>
+</html>

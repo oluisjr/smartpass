@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SmartPass • Check-in</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Montserrat -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body{ font-family:'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin:0; }
+    :root{
+      --sand-0:#ffffff;--sand-1:#fbf7ef;--sand-2:#f5efe3;
+      --ink:#141414;--muted:#6b6b6b;--glow: rgba(206, 180, 136, .95);--glowSoft: rgba(206, 180, 136, .35);
+      --cardBg: rgba(255,255,255,.86);--cardStroke: rgba(20,20,20,.08);
+    }
+    .sp-page{
+      background:
+        radial-gradient(900px 520px at 10% -10%, rgba(206,180,136,.18), transparent 60%),
+        radial-gradient(740px 480px at 110% 10%, rgba(206,180,136,.10), transparent 55%),
+        linear-gradient(180deg, var(--sand-0), var(--sand-2));
+      color: var(--ink);
+      min-height: 100vh;
+    }
+    .sp-shell{
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 22px 16px 28px;
+    }
+    .sp-card{
+      background: var(--cardBg);
+      border: 1px solid var(--cardStroke);
+      border-radius: 18px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 18px 60px rgba(0,0,0,.10);
+    }
+    .sp-lightbar{
+      height:2px;
+      background: linear-gradient(90deg, rgba(206,180,136,0), var(--glow), rgba(206,180,136,0));
+      box-shadow: 0 0 10px var(--glowSoft), 0 0 18px rgba(206,180,136,.18);
+    }
+    .sp-muted{ color: var(--muted); }
+    .sp-title{ font-weight:650; letter-spacing:-0.01em; }
+  </style>
+
+</head>
+
+<body class="state_ok">
+  <div class="max-w-xl mx-auto">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-2xl brand flex items-center justify-center">
+          <div class="w-3 h-3 rounded-full brandDot" id="stateDot"></div>
+        </div>
+        <div>
+          <div class="text-xs tracking-[0.35em] opacity-70">CSN</div>
+          <div class="text-xl font-semibold">Confirmação de Presença</div>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <button id="themeToggle" class="px-3 py-2 rounded-xl glass stroke text-sm font-semibold">Modo claro</button>
+      </div>
+    </div>
+
+    <div class="glass rounded-2xl p-5 stroke">
+      <div class="text-sm opacity-70" id="meetingTitle">—</div>
+      <div class="mt-1 text-2xl font-black" id="guestName">Carregando…</div>
+      <div class="mt-1 text-sm opacity-70" id="meta">—</div>
+
+      <div class="mt-4 grid grid-cols-2 gap-3">
+        <div class="glass rounded-2xl p-4">
+          <div class="text-xs opacity-70">Expira em</div>
+          <div class="text-base font-semibold" id="expiresAt">—</div>
+        </div>
+        <div class="glass rounded-2xl p-4">
+          <div class="text-xs opacity-70">Status</div>
+          <div class="text-base font-semibold" id="statusText">Carregando…</div>
+        </div>
+      </div>
+
+      <div class="mt-4" id="codeBlock" style="display:none">
+        <div class="text-sm font-semibold mb-2">Código de confirmação</div>
+        <div class="text-xs opacity-70 mb-2">Peça o código ao organizador (troca a cada 60s).</div>
+        <input id="code" inputmode="numeric" maxlength="6"
+          class="input px-4 py-3 rounded-2xl w-full text-center tracking-widest text-xl font-black"
+          placeholder="000000" />
+      </div>
+
+      <div class="mt-4 flex gap-2">
+        <button id="btnLoc" class="flex-1 px-4 py-3 rounded-2xl btn font-semibold">Atualizar localização</button>
+        <button id="btnCheck" class="flex-1 px-4 py-3 rounded-2xl btnPrimary font-black">Marcar presença</button>
+      </div>
+
+      <div class="mt-3 text-sm" id="msg"></div>
+      <div class="mt-2 text-xs opacity-60" id="hint"></div>
+    </div>
+
+    <div class="mt-4 text-xs opacity-60">
+      Dica: a confirmação só libera dentro do local e da janela de validade do convite.
+    </div>
+  </div>
+
+<script>
+(function(){
+  // -----------------------------
+  // Query param
+  // -----------------------------
+  function qp(name){
+    const u = new URL(location.href);
+    return u.searchParams.get(name);
+  }
+  const token = qp('token');
+
+  // -----------------------------
+  // Theme
+  // -----------------------------
+  const body = document.body;
+  const themeBtn = document.getElementById('themeToggle');
+  function applyTheme(mode){
+    if(mode === 'light') body.classList.add('light'); else body.classList.remove('light');
+    localStorage.setItem('sp_theme', mode);
+    themeBtn.textContent = (mode === 'light') ? 'Modo escuro' : 'Modo claro';
+  }
+  applyTheme(localStorage.getItem('sp_theme') || 'dark');
+  themeBtn.onclick = () => applyTheme(body.classList.contains('light') ? 'dark' : 'light');
+
+  // -----------------------------
+  // UI helpers
+  // -----------------------------
+  function setState(state){
+    body.classList.remove('state_ok','state_warn','state_bad','state_dead');
+    body.classList.add(state);
+    const dot = document.getElementById('stateDot');
+    const m = {
+      state_ok:'rgba(34,211,238,.95)',
+      state_warn:'rgba(251,191,36,.95)',
+      state_bad:'rgba(251,113,133,.95)',
+      state_dead:'rgba(255,255,255,.8)'
+    };
+    dot.style.background = m[state] || m.state_ok;
+  }
+
+  function fmtLocal(iso){
+    if(!iso) return '—';
+    try{
+      return new Date(iso).toLocaleString('pt-BR', {
+        hour12:false,
+        year:'numeric', month:'2-digit', day:'2-digit',
+        hour:'2-digit', minute:'2-digit'
+      });
+    }catch{ return iso; }
+  }
+
+  async function fetchJsonWithTimeout(url, opts={}, timeoutMs=12000){
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+    try{
+      const res = await fetch(url, {...opts, signal: ctrl.signal});
+      const data = await res.json().catch(()=> ({}));
+      if(!res.ok) throw data;
+      return data;
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
+  // -----------------------------
+  // Geo
+  // -----------------------------
+  let lastPos = null;
+
+  async function getLocation(){
+    const msg = document.getElementById('msg');
+    msg.textContent = '';
+    if(!navigator.geolocation){
+      msg.innerHTML = '<span class="text-rose-300">Seu navegador não suporta geolocalização.</span>';
+      return null;
+    }
+    msg.innerHTML = '<span class="opacity-70">Obtendo localização…</span>';
+
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          lastPos = pos;
+          msg.innerHTML = '<span class="text-cyan-300 font-semibold">Localização atualizada ✅</span>';
+          resolve(pos);
+        },
+        (err) => {
+          msg.innerHTML = `<span class="text-rose-300">Não consegui acessar sua localização (${err.message}).</span>`;
+          resolve(null);
+        },
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 15000 }
+      );
+    });
+  }
+
+  function haversineM(lat1, lon1, lat2, lon2){
+    const R = 6371000;
+    const toRad = (d) => d * Math.PI / 180;
+    const dLat = toRad(lat2-lat1);
+    const dLon = toRad(lon2-lon1);
+    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+    return 2*R*Math.asin(Math.sqrt(a));
+  }
+
+  // -----------------------------
+  // Business rules (status)
+  // -----------------------------
+  function calcStatus(now, inv, meet, distM){
+    const vf = inv.valid_from ? new Date(inv.valid_from) : null;
+    const vt = inv.valid_to ? new Date(inv.valid_to) : null;
+
+    if(vt && now > vt) return {state:'state_dead', text:'Convite expirado'};
+    if(vf && now < vf) return {state:'state_warn', text:'Fora do horário (cedo)'};
+
+    if(distM != null){
+      const allowed = (meet.radius_m || 150) + 25;
+      if(distM > allowed) return {state:'state_bad', text:'Fora do local permitido'};
+    }
+    return {state:'state_ok', text:'Tudo certo ✅'};
+  }
+
+  // -----------------------------
+  // Load info (FAST: sem GPS)
+  // -----------------------------
+  let info = null;
+
+  async function loadInfo(){
+    const msg = document.getElementById('msg');
+
+    if(!token){
+      document.getElementById('guestName').textContent = 'Link inválido';
+      document.getElementById('statusText').textContent = 'Token ausente';
+      msg.innerHTML = '<span class="text-rose-300">Token ausente na URL. O link está incompleto.</span>';
+      setState('state_bad');
+      return;
+    }
+
+    document.getElementById('statusText').textContent = 'Carregando…';
+    setState('state_warn');
+
+    try{
+      // 1 tentativa rápida + 1 retry curto (pra quando o uvicorn acabou de subir)
+      info = await fetchJsonWithTimeout(`/api/checkin/info?token=${encodeURIComponent(token)}`, {}, 9000)
+        .catch(async (e) => {
+          await new Promise(r => setTimeout(r, 600));
+          return await fetchJsonWithTimeout(`/api/checkin/info?token=${encodeURIComponent(token)}`, {}, 12000);
+        });
+
+      const inv = info.invitee;
+      const meet = info.meeting;
+
+      document.getElementById('guestName').textContent = inv.name || '—';
+      document.getElementById('meetingTitle').textContent = meet.title || '—';
+
+      const meta = [inv.company, inv.area].filter(Boolean).join(' • ');
+      document.getElementById('meta').textContent = meta || '—';
+      document.getElementById('expiresAt').textContent = fmtLocal(inv.valid_to);
+
+      const requiresCode = !!(info.policy && info.policy.requires_code);
+      document.getElementById('codeBlock').style.display = requiresCode ? '' : 'none';
+
+      if(inv.checked_in){
+        setState('state_ok');
+        document.getElementById('statusText').textContent = 'Presença já confirmada ✅';
+        document.getElementById('btnCheck').disabled = true;
+        document.getElementById('btnCheck').textContent = 'Confirmado';
+        document.getElementById('hint').textContent = 'Tudo certo. Você já está confirmado.';
+        msg.textContent = '';
+      } else {
+        document.getElementById('statusText').textContent = 'Aguardando localização…';
+        document.getElementById('hint').textContent = 'Atualize a localização e depois marque presença.';
+        msg.textContent = '';
+      }
+
+      // status inicial sem distância
+      refreshStatus();
+
+    }catch(e){
+      document.getElementById('guestName').textContent = 'Não consegui carregar';
+      document.getElementById('statusText').textContent = 'Erro';
+      msg.innerHTML = `<span class="text-rose-300">${e.error || 'Falha ao obter dados do convite.'}</span>`;
+      setState('state_bad');
+      info = null;
+    }
+  }
+
+  function refreshStatus(){
+    if(!info) return;
+    const inv = info.invitee;
+    const meet = info.meeting;
+    const now = new Date();
+
+    let dist = null;
+    if(lastPos){
+      dist = haversineM(lastPos.coords.latitude, lastPos.coords.longitude, meet.lat, meet.lng);
+    }
+
+    const st = calcStatus(now, inv, meet, dist);
+    setState(st.state);
+    document.getElementById('statusText').textContent = st.text;
+
+    // Dica contextual
+    if(!lastPos){
+      document.getElementById('hint').textContent = 'Toque em “Atualizar localização” para liberar a validação.';
+    }else{
+      document.getElementById('hint').textContent = 'Se estiver no local e no horário, pode marcar presença.';
+    }
+  }
+
+  // -----------------------------
+  // Check-in
+  // -----------------------------
+  async function doCheckin(){
+    const msg = document.getElementById('msg');
+    msg.textContent = '';
+    if(!info) return;
+
+    if(!lastPos){
+      await getLocation();
+      refreshStatus();
+      if(!lastPos) return;
+    }
+
+    const code = document.getElementById('code').value;
+
+    const payload = {
+      token,
+      lat: lastPos.coords.latitude,
+      lng: lastPos.coords.longitude,
+      accuracy_m: lastPos.coords.accuracy,
+      code
+    };
+
+    try{
+      const btn = document.getElementById('btnCheck');
+      btn.disabled = true;
+      btn.textContent = 'Validando…';
+
+      const res = await fetchJsonWithTimeout('/api/checkin', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      }, 15000);
+
+      msg.innerHTML = `<span class="text-cyan-300 font-semibold">${res.message || 'Presença confirmada ✅'}</span>`;
+      setState('state_ok');
+      document.getElementById('statusText').textContent = 'Confirmado ✅';
+      btn.textContent = 'Confirmado';
+      btn.disabled = true;
+
+    }catch(e){
+      const r = e.reason || '';
+      if(r === 'out_of_range') setState('state_bad');
+      else if(r === 'too_early') setState('state_warn');
+      else if(r === 'expired') setState('state_dead');
+      else if(r === 'bad_code') setState('state_bad');
+      else setState('state_warn');
+
+      msg.innerHTML = `<span class="text-rose-300">${e.error || 'Não foi possível confirmar agora.'}</span>`;
+
+      const btn = document.getElementById('btnCheck');
+      btn.disabled = false;
+      btn.textContent = 'Marcar presença';
+    }
+  }
+
+  // -----------------------------
+  // Hooks
+  // -----------------------------
+  document.getElementById('btnLoc').onclick = async () => {
+    await getLocation();
+    refreshStatus();
+  };
+  document.getElementById('btnCheck').onclick = doCheckin;
+
+  // Atualiza status a cada 1s (pra refletir janela de validade e afins)
+  setInterval(refreshStatus, 1000);
+
+  // Boot
+  loadInfo();
+})();
+</script>
+</body>
+</html>

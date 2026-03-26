@@ -1,0 +1,42 @@
+{
+  "card": {
+    "type": "generic",
+    "subType": "others",
+    "data": [
+      {
+        "createdAt": 1768268011243,
+        "updatedAt": 1768268011243,
+        "language": "pt",
+        "refId": "439b9f63-2b5c-4960-9570-aa8226882657",
+        "attributes": {
+          "title": "SmartPass CSN",
+          "subtitle": "Processo Seletivo | ESTÁGIO",
+          "providerName": "CSN",
+          "startDate": 1768268011243,
+          "startDate.utcOffset": "UTC-3",
+          "endDate": 1768527211243,
+          "endDate.utcOffset": "UTC-3",
+          "text1": "144f17d4",
+          "text2": "CSN",
+          "text3": "LUIS IGNACIO JUNIOR",
+          "text4": "Processo Seletivo | ESTÁGIO",
+          "text5": "candidate",
+          "text6": " ",
+          "serial1.value": ">PASS144f17d4",
+          "serial1.serialType": "QRCODE",
+          "serial1.ptFormat": "QRCODE",
+          "serial1.ptSubFormat": "QR_CODE",
+          "locations": "[]",
+          "noticeDesc": "{}",
+          "csInfo": "{}"
+        }
+      }
+    ]
+  },
+  "iss": "4138017514550138240",
+  "aud": "1449673255902172160",
+  "iat": 1768268011,
+  "exp": 1768268071,
+  "cardId": "3irbs944vie00",
+  "refId": "144f17d4-5883-494a-8c1c-0474108b705c"
+}
